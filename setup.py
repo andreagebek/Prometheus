@@ -6,7 +6,7 @@ Created on 2. June 2021 by Andrea Gebek.
 
 import numpy as np
 import sys
-import shelve
+import json
 from constants import *
 
 
@@ -60,7 +60,6 @@ def read_str(text, options = 0):
 Fundamentals
 """
 
-filename = read_str('Settings file name (omit ending): ').replace(' ', '')
 
 system_list = []
 for key, value in planets_dict.items():
@@ -191,23 +190,26 @@ Performance parameters
 """
 
 if mode == 'spectrum':
-    lower_wavelength = read_value('Enter the lower wavelength border in Angstrom:', 1e-3, 1e12, 1e-8)
-    upper_wavelength = read_value('Enter the upper wavelength border in Angstrom:', lower_wavelength * 1e8, 1e12, 1e-8,
+    lower_w = read_value('Enter the lower wavelength border in Angstrom:', 1e-3, 1e12, 1e-8)
+    upper_w = read_value('Enter the upper wavelength border in Angstrom:', lower_w * 1e8, 1e12, 1e-8,
     round = False)
     resolution = read_value('Eneter the resolution of the wavelength grid in Angstrom:', 1e-6,
-    (upper_wavelength - lower_wavelength) * 1e8 / 2., 1e-8, round = False)
+    (upper_w - lower_w) * 1e8 / 2., 1e-8, round = False)
 
 x_steps = read_value('Enter the steps for the spatial discretization along the chord:', 2, 1e6, 1)
 z_steps = read_value('Enter the steps for the spatial discretization in z-direction:', 2, 1e6, 1)
 
 
-shelf = shelve.open(filename, 'n')
+"""
+Write parameter dictionary and store it as json file
+"""
 
-for key in dir():
-    try:
-        shelf[key] = globals()[key]
-    except TypeError:
-        continue
 
-shelf.close()
+parameters = {'R_star': R_star, 'R_0': R_0, 'M_p': M_p, 'direction': direction, 'mode': mode, 'dishoom_import': dishoom_import,
+'Scenarios': scenario_dict, 'Lines': lines_dict, 'Species': species_dict,
+'lower_w': lower_w, 'upper_w': upper_w, 'resolution': resolution, 'x_steps': x_steps, 'z_steps': z_steps}
+
+
+with open('../settings.txt', 'w') as outfile:
+    json.dump(parameters, outfile)
 

@@ -4,14 +4,24 @@ Created on 3. June 2021 by Andrea Gebek.
 """
 
 import numpy as np
+import json
 from scipy.special import wofz
 from datetime import datetime
-
-from config_v3 import *
-from constants_v3 import *
+from constants import *
 
 
 startTime = datetime.now()
+
+""".
+Read in values from the setup file
+"""
+
+with open('../settings.txt') as file:
+    parameters = json.load(file)
+
+print(parameters)
+print(parameters['Scenarios'].keys())
+stop
 
 """
 Number density functions
