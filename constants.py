@@ -5,7 +5,6 @@ Created on 2. June 2021 by Andrea Gebek.
 
 import numpy as np
 
-pi = np.pi
 e = 4.803e-10
 m_e = 9.109e-28
 c = 2.998e10
