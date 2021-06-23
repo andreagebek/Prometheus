@@ -21,7 +21,7 @@ m_Na = 22.99*amu
 euler_mascheroni = 0.57721 
 
 """
-Parameters for the absorption lines
+Parameters for the absorption lines and species (potentially combine this)
 Format: [Line intensity (cm/particle), Wavelength in vacuum (cm), Natural linewidth*2 pi (Hz),
 mass of the absorber (g), name of the absorber]
 Na_D2, Na_D1: Draine 2011, Steck 2000
@@ -32,6 +32,9 @@ absorptionlines_dict = {'Na_D2': [5.66e-13, 5889.95e-8, 3.833e8, m_Na, 'sodium']
 'Na_D1': [2.82e-13, 5895.92e-8, 3.855e8, m_Na, 'sodium'],
 'K_D2': [6.021e-13, 7667.01e-8, 2.3825e8, m_K, 'potassium'],
 'K_D1': [3.002e-13, 7701.08e-8, 2.3513e8, m_K, 'potassium']}
+
+speciesMass_dict = {'sodium': m_Na,
+'potassium': m_K}
 
 
 """

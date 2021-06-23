@@ -170,13 +170,14 @@ while True:
                 if key_scenario == 'barometric' or key_scenario == 'hydrostatic':
                     chi = read_value('Enter the mixing ratio of ' + key_species + ' in the ' + key_scenario + ' scenario:', 
                     1e-15, 1, 1)
-                    params.append([key_scenario, chi])
+                    params.append([key_scenario, chi, T])
 
                 elif key_scenario == 'exomoon':
                     N = read_value('Enter the number of absorbing ' + key_species + ' atoms in the ' + key_scenario + ' scenario:', 
                     1e10, 1e50, 1)
                     v_mean = read_value('Enter the mean (thermal) velocity of ' + key_species + ' in the ' + key_scenario + '\
  scenario in km/s:', 1e-3, 1e5, 1e5)
+ 
                     params.append([key_scenario, N, v_mean])                   
 
             species_dict[key_species] = params
@@ -193,12 +194,21 @@ if mode == 'spectrum':
     lower_w = read_value('Enter the lower wavelength border in Angstrom:', 1e-3, 1e12, 1e-8)
     upper_w = read_value('Enter the upper wavelength border in Angstrom:', lower_w * 1e8, 1e12, 1e-8,
     round = False)
-    resolution = read_value('Eneter the resolution of the wavelength grid in Angstrom:', 1e-6,
+    resolution = read_value('Enter the resolution of the wavelength grid in Angstrom:', 1e-6,
     (upper_w - lower_w) * 1e8 / 2., 1e-8, round = False)
 
 x_steps = read_value('Enter the steps for the spatial discretization along the chord:', 2, 1e6, 1)
 z_steps = read_value('Enter the steps for the spatial discretization in z-direction:', 2, 1e6, 1)
 
+
+"""
+Additional output
+"""
+
+if 'barometric' in scenario_dict.keys():
+    benchmark = read_str('Do you want to record the analytical benchmark for the barometric scenario?', ['yes', 'no'])
+else:
+    benchmark = 'no'
 
 """
 Write parameter dictionary and store it as json file
@@ -207,7 +217,7 @@ Write parameter dictionary and store it as json file
 
 parameters = {'R_star': R_star, 'R_0': R_0, 'M_p': M_p, 'direction': direction, 'mode': mode, 'dishoom_import': dishoom_import,
 'Scenarios': scenario_dict, 'Lines': lines_dict, 'Species': species_dict,
-'lower_w': lower_w, 'upper_w': upper_w, 'resolution': resolution, 'x_steps': x_steps, 'z_steps': z_steps}
+'lower_w': lower_w, 'upper_w': upper_w, 'resolution': resolution, 'x_steps': x_steps, 'z_steps': z_steps, 'benchmark': benchmark}
 
 
 with open('../settings.txt', 'w') as outfile:
