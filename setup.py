@@ -21,7 +21,7 @@ def read_value(text, lower, upper, unit, round = True):
             string = input(text + ' [' + '{:e}'.format(lower) + ', ' + '{:e}'.format(upper) + '] ').replace(' ', '')
 
         if string == '':
-            print('You actually do have to enter something you scumbag.')
+            print('You actually do have to enter something!')
             continue
         
         value = float(string)
@@ -46,7 +46,7 @@ def read_str(text, options = 0):
             string = input(text + ' ' + str(options).replace("'",'') + ' ').replace(' ', '')
 
         if string == '':
-            print('You actually do have to enter something you scumbag.')
+            print('You actually do have to enter something!')
         
         elif options != 0 and string not in options:
             print('Please select a valid option.')
@@ -104,37 +104,85 @@ while True:
         break
 
 
-    elif scenario_name == 'barometric' or scenario_name == 'hydrostatic':
-        winds = read_str('Add winds to the model?', ['no'])
+    if check('atmosphere', scenario_name):
+
         T = read_value('Enter the temperature of the atmosphere in Kelvin:', 1, 1e6, 1)
         P_0 = read_value('Enter the pressure at the reference radius in bar:', 1e-12, 1e6, 1e6)
         mu = read_value('Enter the mean molecular weight of the atmosphere in atomic mass units:', 0.05, 500, amu)
+        #press_broad_ON = read_str('Do you want to add pressure broadening in this scenario?', ['no']) NOT HERE!
+        rayleigh_scatt_ON = read_str('Do you want to add Rayleigh scattering in this scenario?', ['yes', 'no'])
+            
+        #winds_ON = read_str('Do you want to add winds in this scenario?', ['no'])
 
         params = [T, P_0, mu]
 
-    elif scenario_name == 'exomoon':
-        vel_dist = read_str('Enter the velocity distribution of the atoms:', ['maxwell_boltzmann'])
+        if rayleigh_scatt_ON == 'yes':
+            params.append('rayleigh_scatt')
+
+    if scenario_name == 'escaping':
+
+        q_esc = read_value('Enter the power law index for the escaping atmosphere:', 3, 20, 1)
+        norm_esc = read_str('Do you want to normalize the number density profile via (total) pressure or via number \
+of absorbing atoms at the base of the wind?', ['pressure', 'number'])
+
+        if norm_esc == 'pressure':
+
+            T = read_value('Enter the temperature of the escaping wind in Kelvin:', 1, 1e6, 1)
+            P_0 = read_value('Enter the pressure at the base of the wind in bar:', 1e-15, 1e3, 1e6)
+
+            params = [q_esc, norm_esc, T, P_0]
+        
+        else:
+
+            params = [q_esc, norm_esc]
+
+    if scenario_name == 'exomoon':
+
         R_moon = read_value('Enter the radius of the moon in Io radii:', 1e-3, 1e3, R_Io)
 
-        params = [R_moon]
+        params = [R_moon, 'center_off']
 
-    
+    if check('evaporative', scenario_name, params):
+
+        therm_broad_ON = read_str('Do you want to add pseudo-thermal broadening (via mean velocity of absorber) in this scenario?', ['yes', 'no'])
+
+        if therm_broad_ON == 'yes':
+            params.append('therm_broad')
+
     scenario_dict[scenario_name] = params
 
     scenario_list.remove(scenario_name)
 
-if len(scenario_dict) == 0:
-    print('You have not added any absorption sources you scrub.')
-    sys.exit()
 
+if check('exomoon_center', scenario_dict.keys()):
+    exomoon_center_ON = read_str('Do you want to make the approximation that the exomoon sits at the planetary center, neglecting the planet itself?', ['yes', 'no'])
+    
+    if exomoon_center_ON == 'yes':
+        scenario_dict['exomoon'][1] = 'center_on'
+    
+    else:
+        print('NOW READ IN POSITION OF EXOMOON')
+
+
+
+if len(scenario_dict) == 0:
+    print('You have not added any absorption sources! Your loss. PROMETHEUS exits now.')
+    sys.exit()
 
 """
 Absorbers
 """
-
+lines_dict = {}
+species_dict = {}
 
 while True:
-    absorber_mode = read_str('How do you want to specify the absorption cross section?', ['BuiltinLine']) #BuiltinCont, ImportLineList
+    if check('only_rayleigh_scatt', scenario_dict):
+        add_lines_ON = read_str('Do you want to add absorption lines on top of Rayleigh scattering?', ['yes', 'no'])
+
+        if add_lines_ON == 'no':
+            break
+
+    absorber_mode = read_str('How do you want to specify the absorption cross section for the absorption lines?', ['BuiltinLine']) #ImportLineList
 
     if absorber_mode == 'BuiltinLine':
         
@@ -142,7 +190,7 @@ while True:
         for key, value in absorptionlines_dict.items():
             absorptionlines_list.append(key)
         absorptionlines_list.append('0')
-        lines_dict = {}        
+      
         
         while True:
             line = read_str('Enter the name of the line you want to consider, or 0 to move on:', absorptionlines_list)
@@ -155,10 +203,10 @@ while True:
                 absorptionlines_list.remove(line)
 
         if len(lines_dict) == 0:
-            print('You have not added any absorption lines you scrub.')
+            print('You have not added any source of absorption! Your loss. PROMETHEUS exits now.')
             sys.exit()
 
-        species_dict = {}
+
         for value in lines_dict.values():
             element = value[4]
             species_dict[element] = 0
@@ -167,24 +215,36 @@ while True:
             params = []
             for key_scenario in scenario_dict.keys():
 
-                if key_scenario == 'barometric' or key_scenario == 'hydrostatic':
+                if not check('evaporative', key_scenario, scenario_dict[key_scenario]):
                     chi = read_value('Enter the mixing ratio of ' + key_species + ' in the ' + key_scenario + ' scenario:', 
                     1e-15, 1, 1)
-                    params.append([key_scenario, chi, T])
 
-                elif key_scenario == 'exomoon':
+                    if check('atmosphere', key_scenario):
+                        T = scenario_dict[key_scenario][0]
+                    if key_scenario == 'escaping':
+                        T = scenario_dict[key_scenario][2]
+
+                    params.append([key_scenario, chi, T])
+                        
+                else:
                     N = read_value('Enter the number of absorbing ' + key_species + ' atoms in the ' + key_scenario + ' scenario:', 
                     1e10, 1e50, 1)
-                    v_mean = read_value('Enter the mean (thermal) velocity of ' + key_species + ' in the ' + key_scenario + '\
+
+                    if 'therm_broad' in scenario_dict[key_scenario]:
+
+                        v_mean = read_value('Enter the mean (thermal) velocity of ' + key_species + ' in the ' + key_scenario + '\
  scenario in km/s:', 1e-3, 1e5, 1e5)
- 
-                    params.append([key_scenario, N, v_mean])                   
+                        absorber_mass = speciesMass_dict[key_species]
+
+                        params.append([key_scenario, N, v_mean, absorber_mass])
+
+                    else:
+
+                        params.append([key_scenario, N])                   
 
             species_dict[key_species] = params
-                    
 
     break
-
 
 """
 Performance parameters
