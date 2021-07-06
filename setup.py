@@ -10,15 +10,25 @@ import json
 from constants import *
 
 
-def read_value(text, lower, upper, unit, round = True):
+def read_value(text, lower, upper, unit, round = True, digits = 0, accept_borders = False):
     
     while True:
+
+        if accept_borders:
+            brackl = ' ['
+            brackr = '] '
+        else:
+            brackl = ' ('
+            brackr = ') '
         
         if round:
-            string = input(text + ' [' + '{:.0e}'.format(lower) + ', ' + '{:.0e}'.format(upper) + '] ').replace(' ', '')
-        
+            string = input(text + brackl + '{:.0e}'.format(lower) + ', ' + '{:.0e}'.format(upper) + brackr).replace(' ', '')
+
+        elif digits > 0:
+            string = input(text + brackl + '{:.{n}e}'.format(lower, n = digits) + ', ' + '{:.{n}e}'.format(upper, n = digits) + brackr).replace(' ', '')
+
         else:
-            string = input(text + ' [' + '{:e}'.format(lower) + ', ' + '{:e}'.format(upper) + '] ').replace(' ', '')
+            string = input(text + brackl + '{:e}'.format(lower) + ', ' + '{:e}'.format(upper) + brackr).replace(' ', '')
 
         if string == '':
             print('You actually do have to enter something!')
@@ -27,6 +37,10 @@ def read_value(text, lower, upper, unit, round = True):
         value = float(string)
 
         if value > lower and value < upper:
+            return value * unit
+            break
+
+        elif value >= lower and value <= upper and accept_borders:
             return value * unit
             break
 
@@ -73,12 +87,18 @@ if systemname == '0':
     R_star = read_value('Enter the radius of the host star in solar radii:', 1e-5, 1e5, R_sun)
     R_0 = read_value('Enter the radius of the exoplanet in Jupiter radii:', 1e-5, 1e5, R_J)
     M_p = read_value('Enter the mass of the exoplanet in Jupiter masses:', 1e-5, 1e3, M_J)
+    a_p = read_value('Enter the orbital distance between planet and star in AU:', 1e-5, 1e3, AU)
 
 else:
     R_star = planets_dict[systemname][0]
     R_0 = planets_dict[systemname][1]
     M_p = planets_dict[systemname][2]
+    a_p = planets_dict[systemname][3]
 
+R_moon = 0
+a_moon = 0
+alpha_moon = 0
+z_moon = 0
 
 
 direction = read_str('Do you want to perform forward or inverse modelling?', ['forward'])
@@ -140,7 +160,7 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number'])
 
         R_moon = read_value('Enter the radius of the moon in Io radii:', 1e-3, 1e3, R_Io)
 
-        params = [R_moon, 'center_off']
+        params = [R_moon, 'center_exomoon_off']
 
     if check('evaporative', scenario_name, params):
 
@@ -158,10 +178,13 @@ if check('exomoon_center', scenario_dict.keys()):
     exomoon_center_ON = read_str('Do you want to make the approximation that the exomoon sits at the planetary center, neglecting the planet itself?', ['yes', 'no'])
     
     if exomoon_center_ON == 'yes':
-        scenario_dict['exomoon'][1] = 'center_on'
+        scenario_dict['exomoon'][1] = 'center_exomoon_on'
     
     else:
-        print('NOW READ IN POSITION OF EXOMOON')
+        a_moon = read_value('Enter the orbital distance between the exomoon and the planet in planetary radii:', 1, a_p / R_0, R_0, round = False)
+        alpha_moon = read_value('Enter the phase angle of the exomoon in degrees (0 is to the left when the exoplanetary system is viewed from the observers \
+perspective, 90 corresponds to the exomoon sitting between the planet and the observer):', 0, 360, 2. * np.pi / 360., round = False, digits = 2, accept_borders = True)
+        z_moon = read_value('Enter the elevation (z-coordinate) of the exomoon with respect to the star-planet plane in planetary radii:', 0, a_moon / R_0, R_0, round = False, accept_borders = True)
 
 
 
@@ -257,7 +280,14 @@ if mode == 'spectrum':
     resolution = read_value('Enter the resolution of the wavelength grid in Angstrom:', 1e-6,
     (upper_w - lower_w) * 1e8 / 2., 1e-8, round = False)
 
-x_steps = read_value('Enter the steps for the spatial discretization along the chord:', 2, 1e6, 1)
+upper_x = read_value('Enter the half chord length (x-direction) for the numerical integration along the x-axis in planetary radii:', 0, a_p / R_0, R_0, round = False)
+x_steps = read_value('Enter the steps for the spatial discretization along the chord (x-direction):', 2, 1e6, 1)
+
+if check('spherical_symmetry', scenario_dict):
+    phi_steps = 0
+else:
+    phi_steps = read_value('Enter the steps for the spatial discretization for the polar coordinate (phi-direction):', 2, 1e4, 1)
+
 z_steps = read_value('Enter the steps for the spatial discretization in z-direction:', 2, 1e6, 1)
 
 
@@ -275,9 +305,12 @@ Write parameter dictionary and store it as json file
 """
 
 
-parameters = {'R_star': R_star, 'R_0': R_0, 'M_p': M_p, 'direction': direction, 'mode': mode, 'dishoom_import': dishoom_import,
+parameters = {'R_star': R_star, 'R_0': R_0, 'M_p': M_p, 'a_p': a_p, 
+'R_moon': R_moon, 'a_moon': a_moon, 'alpha_moon': alpha_moon, 'z_moon': z_moon,
+'direction': direction, 'mode': mode, 'dishoom_import': dishoom_import,
 'Scenarios': scenario_dict, 'Lines': lines_dict, 'Species': species_dict,
-'lower_w': lower_w, 'upper_w': upper_w, 'resolution': resolution, 'x_steps': x_steps, 'z_steps': z_steps, 'benchmark': benchmark}
+'lower_w': lower_w, 'upper_w': upper_w, 'resolution': resolution, 
+'upper_x': upper_x, 'x_steps': x_steps, 'phi_steps': phi_steps, 'z_steps': z_steps, 'benchmark': benchmark}
 
 
 with open('../settings.txt', 'w') as outfile:

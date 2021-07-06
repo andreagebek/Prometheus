@@ -172,20 +172,84 @@ def optical_depth(z, wavelength):
     """Calculate the optical depth for all absorbers along the chord 
     """
 
-    x = np.linspace(0, R_s, int(x_steps) + 1)[:-1] + 0.5 * R_s / float(x_steps)
+    x = np.linspace(a_p - upper_x, a_p + upper_x, int(x_steps) + 1)[:-1] + upper_x / float(x_steps)
 
-    delta_x = R_s / float(x_steps)
+    delta_x = 2 * upper_x / float(x_steps)
 
     xx, zz = np.meshgrid(x, z)
 
-    r = np.sqrt(xx**2 + zz**2)
+    r = np.sqrt((xx-a_p)**2 + zz**2)
 
     tau = 0
     for idx_scenario, key_scenario in enumerate(scenario_dict.keys()):
         number_density = number_density_dict[key_scenario]
         n = number_density(r, scenario_dict[key_scenario])
 
-        N = 2 * delta_x * np.sum(n, axis = 1)
+        N = delta_x * np.sum(n, axis = 1)
+
+        sigma = 0
+        for key_species in species_dict.keys():
+
+            chi = species_dict[key_species][idx_scenario][1] # Mixing ratio OR number of absorbing atoms
+
+            if not check('evaporative', key_scenario, scenario_dict[key_scenario]):
+                T = species_dict[key_species][idx_scenario][2]
+
+
+            else:
+
+                if 'therm_broad' in scenario_dict[key_scenario]:
+                    v_mean = species_dict[key_species][idx_scenario][2]
+                    absorber_mass = species_dict[key_species][idx_scenario][3]
+                    T = v_mean**2 * absorber_mass * np.pi / (8. * k_B)
+                
+                else:
+                    T = 0   # No thermal broadening
+
+            sigma += absorption_cross_section(wavelength, chi, T, key_species)
+
+        
+        if 'rayleigh_scatt' in scenario_dict[key_scenario]:
+            sigma += rayleigh_scattering(wavelength)
+
+        tau += np.tensordot(sigma, N, axes = 0)
+    
+    return tau
+
+
+def optical_depth3D(phi, rho, wavelength):
+
+    x = np.linspace(a_p - upper_x, a_p + upper_x, int(x_steps) + 1)[:-1] + upper_x / float(x_steps)
+    delta_x = 2 * upper_x / float(x_steps)
+    xx, phiphi, rhorho = np.meshgrid(x, phi, rho)
+
+    tau = 0
+    for idx_scenario, key_scenario in enumerate(scenario_dict.keys()):
+        number_density = number_density_dict[key_scenario]
+
+        if check('planetarySource', key_scenario):
+        
+            r = np.sqrt((xx - a_p)**2 + rhorho**2)
+
+        elif key_scenario == 'exomoon':
+            x_moonFrame = xx - a_p - np.sqrt(a_moon**2 - z_moon**2) * np.sin(alpha_moon)
+            y_moonFrame = np.sin(phiphi) * rhorho - np.sqrt(a_moon**2 - z_moon**2) * np.cos(alpha_moon)
+            z_moonFrame = np.cos(phiphi) * rhorho - z_moon
+
+            r = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
+
+        n = number_density(r, scenario_dict[key_scenario])
+
+        if 'exomoon' in scenario_dict.keys(): # Correct for chords which are blocked by the off-center exomoon
+            y_moon = np.sqrt(a_moon**2-z_moon**2) * np.cos(alpha_moon)
+            yy = np.sin(phiphi) * rhorho
+            zz = np.cos(phiphi) * rhorho
+
+            blockingMoon = (yy-y_moon)**2 + (zz-z_moon)**2 < R_moon**2
+            
+            n = np.where(blockingMoon, 0, n)
+
+        N = delta_x * np.sum(n, axis = 1)
 
         sigma = 0
         for key_species in species_dict.keys():
@@ -217,21 +281,48 @@ def optical_depth(z, wavelength):
     return tau
 
 
+
+
+
 def transit_depth(wavelength):
     """Calculate the wavelength-dependent transit depth
     """
 
-    
-    z = np.linspace(R_0, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - R_0) / float(z_steps)
+    if phi_steps > 0:
 
-    single_chord = np.exp(-optical_depth(z, wavelength))
+        phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
+        rho = np.linspace(R_0, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - R_0) / float(z_steps)
         
-    delta_z = (R_s - R_0) / float(z_steps)
+        single_chord = np.exp(-optical_depth3D(phi, rho, wavelength))
 
-    sum_over_chords = delta_z * np.tensordot(z, single_chord, axes = [0, 1])
+        delta_rho = (R_s - R_0) / float(z_steps)
+        delta_phi = 2 * np.pi / float(phi_steps)
+
+        integral_phi = delta_phi * np.sum(single_chord, axis = 1)
+
+        sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1])
+
+        if 'exomoon' in scenario_dict.keys():
+            sum_over_chords -= np.pi * R_moon**2
+
+        return sum_over_chords / (np.pi * R_s**2)
+
+    else:
+        if any(['center_exomoon_on' in element for element in scenario_dict.values()]):
+            starting_z = R_moon
+        
+        else:
+            starting_z = R_0
+
+        z = np.linspace(starting_z, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - starting_z) / float(z_steps)
+
+        single_chord = np.exp(-optical_depth(z, wavelength))
+            
+        delta_z = (R_s - starting_z) / float(z_steps)
+
+        sum_over_chords = delta_z * np.tensordot(z, single_chord, axes = [0, 1])
     
-    return 2. / (R_s**2 - R_0**2) * sum_over_chords
-
+        return 2 * sum_over_chords / R_s**2
 
 """
 Additional Functionality
@@ -257,11 +348,10 @@ def BarometricBenchmark(params):
         sigma += absorption_cross_section(wavelength, chi, T, key_species)
 
     kappa = sigma / mu
-    R = R_0 + H * (euler_mascheroni + np.log(P_0 * kappa / g * np.sqrt(2 * np.pi * R_0 / H)))
-    benchmark_spectrum = 1 - (R**2 - R_0**2) / (R_s**2 - R_0**2)
+    R_lambda = R_0 + H * (euler_mascheroni + np.log(P_0 * kappa / g * np.sqrt(2 * np.pi * R_0 / H)))
+    benchmark_spectrum = (R_s**2 - R_lambda**2) / R_s**2
 
     return benchmark_spectrum
-
 
 
 """.
@@ -276,14 +366,22 @@ with open('../settings.txt') as file:
 R_s = param['R_star']
 R_0 = param['R_0']
 M_p = param['M_p']
+a_p = param['a_p']
+R_moon = param['R_moon']
+a_moon = param['a_moon']
+alpha_moon = param['alpha_moon']
+z_moon = param['z_moon']
 
 scenario_dict = param['Scenarios']
 lines_dict = param['Lines']
 species_dict = param['Species']
 
 
+
 wavelength = np.linspace(param['lower_w'], param['upper_w'], 1 + int((param['upper_w'] - param['lower_w']) / param['resolution']))
+upper_x = param['upper_x']
 x_steps = param['x_steps']
+phi_steps = param['phi_steps']
 z_steps = param['z_steps']
 
 benchmark_ON = param['benchmark']

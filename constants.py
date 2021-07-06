@@ -19,6 +19,7 @@ R_Io = 1.822e8      # Io radius
 m_K = 39.0983*amu
 m_Na = 22.99*amu
 euler_mascheroni = 0.57721 
+AU = 1.496e13   # Conversion of one astronomical unit into cm
 
 """
 Parameters for the absorption lines and species (potentially combine this)
@@ -39,13 +40,13 @@ speciesMass_dict = {'sodium': m_Na,
 
 """
 Planetary parameters
-Format: [Stellar radius (cm), Reference radius (cm), Planetary mass(g)]
+Format: [Stellar radius (cm), Reference radius (cm), Planetary mass(g), Orbital distance (cm)]
 WASP-49b: Wyttenbach et al. 2017
 HD189733b: Wyttenbach et al. 2015
 """
 
-planets_dict = {'WASP-49b': [1.038 * R_sun, 1.198 * R_J, 0.399 * M_J],
-'HD189733b': [0.756 * R_sun, 1.138 * R_J, 1.138 * M_J]}
+planets_dict = {'WASP-49b': [1.038 * R_sun, 1.198 * R_J, 0.399 * M_J, 0.03873 * AU],
+'HD189733b': [0.756 * R_sun, 1.138 * R_J, 1.138 * M_J, 0.0312 * AU]}
 
 
 """
@@ -86,3 +87,15 @@ def check(checkfor, quantity, auxiliary = None):
             if 'rayleigh_scatt' in params:
                 return True
         return False
+
+    elif checkfor == 'spherical_symmetry':
+        for params in quantity.values():
+            if 'center_exomoon_off' in params:
+                return False
+        return True
+
+    elif checkfor == 'planetarySource':
+        if quantity == 'barometric' or quantity == 'hydrostatic' or quantity == 'escaping':
+            return True
+        else:
+            return False
