@@ -20,9 +20,9 @@ def barometric(r, params):
     """Barometric law (to benchmark the numerical solution against analytical
     results)
     """
-    T = params[0]
-    P_0 = params[1]
-    mu = params[2]
+    T = params['T']
+    P_0 = params['P_0']
+    mu = params['mu']
 
     n_0 = P_0 / (k_B * T)
     H = k_B * T * R_0**2 / (G * mu * M_p)
@@ -34,9 +34,9 @@ def hydrostatic(r, params):
     """Hydrostatic equilibrium with constant temperature and
     mean molecular weight
     """
-    T = params[0]
-    P_0 = params[1]
-    mu = params[2]
+    T = params['T']
+    P_0 = params['P_0']
+    mu = params['mu']
 
     n_0 = P_0 / (k_B * T)
     Jeans_0 = G * mu * M_p / (k_B * T * R_0)
@@ -51,18 +51,17 @@ def escaping(r, params):
     """Power law with index q, for a hydrodynamically
     escaping atmosphere
     """
-    q = params[0]
-    norm_esc = params[1]
+    q_esc = params['q_esc']
 
-    if norm_esc == 'pressure':
-        T = params[2]
-        P_0 = params[3]
+    if 'T' in params.keys():
+        T = params['T']
+        P_0 = params['P_0']
         n_0_esc = P_0 / (k_B * T)
     
     else:
-        n_0_esc = (q - 3.) / (4. * np.pi * R_0**3)
+        n_0_esc = (q_esc - 3.) / (4. * np.pi * R_0**3)
 
-    n = n_0_esc * (R_0 / r)**q
+    n = n_0_esc * (R_0 / r)**q_esc
 
     return n
 
@@ -70,7 +69,7 @@ def escaping(r, params):
 def exomoon(r, params):
     """Scaled to observed number density profile at Io (Burger 2001)
     """
-    R_moon = params[0]
+    R_moon = params['R_moon']
 
     n_0_exomoon = 0.34 / (4 * np.pi * R_moon**3)
     n = n_0_exomoon * (r / R_moon)**(-3.34)
@@ -181,69 +180,62 @@ def optical_depth(z, wavelength):
     r = np.sqrt((xx-a_p)**2 + zz**2)
 
     tau = 0
-    for idx_scenario, key_scenario in enumerate(scenario_dict.keys()):
+    for key_scenario in species_dict.keys():
+
         number_density = number_density_dict[key_scenario]
         n = number_density(r, scenario_dict[key_scenario])
 
         N = delta_x * np.sum(n, axis = 1)
 
-        sigma = 0
-        for key_species in species_dict.keys():
+        for key_species in species_dict[key_scenario].keys():
 
-            chi = species_dict[key_species][idx_scenario][1] # Mixing ratio OR number of absorbing atoms
+            sigma = 0
 
-            if not check('evaporative', key_scenario, scenario_dict[key_scenario]):
-                T = species_dict[key_species][idx_scenario][2]
+            chi = species_dict[key_scenario][key_species]['chi'] # Mixing ratio OR number of absorbing atoms
 
+            T_abs = species_dict[key_scenario][key_species]['T_abs']
 
-            else:
-
-                if 'therm_broad' in scenario_dict[key_scenario]:
-                    v_mean = species_dict[key_species][idx_scenario][2]
-                    absorber_mass = species_dict[key_species][idx_scenario][3]
-                    T = v_mean**2 * absorber_mass * np.pi / (8. * k_B)
-                
-                else:
-                    T = 0   # No thermal broadening
-
-            sigma += absorption_cross_section(wavelength, chi, T, key_species)
+            sigma += absorption_cross_section(wavelength, chi, T_abs, key_species)
 
         
         if 'rayleigh_scatt' in scenario_dict[key_scenario]:
-            sigma += rayleigh_scattering(wavelength)
+            if scenario_dict[key_scenario]['rayleigh_scatt']:
+                sigma += rayleigh_scattering(wavelength)
 
         tau += np.tensordot(sigma, N, axes = 0)
     
     return tau
 
 
-def optical_depth3D(phi, rho, wavelength):
+def optical_depth3D(phi, z, wavelength):
 
     x = np.linspace(a_p - upper_x, a_p + upper_x, int(x_steps) + 1)[:-1] + upper_x / float(x_steps)
     delta_x = 2 * upper_x / float(x_steps)
-    xx, phiphi, rhorho = np.meshgrid(x, phi, rho)
+    xx, phiphi, zz = np.meshgrid(x, phi, z)
 
     tau = 0
-    for idx_scenario, key_scenario in enumerate(scenario_dict.keys()):
+    for key_scenario in species_dict.keys():
+
         number_density = number_density_dict[key_scenario]
 
-        if check('planetarySource', key_scenario):
+        if key_scenario == 'barometric' or key_scenario == 'hydrostatic' or key_scenario == 'escaping':
         
-            r = np.sqrt((xx - a_p)**2 + rhorho**2)
+            r = np.sqrt((xx - a_p)**2 + zz**2)
 
         elif key_scenario == 'exomoon':
             x_moonFrame = xx - a_p - np.sqrt(a_moon**2 - z_moon**2) * np.sin(alpha_moon)
-            y_moonFrame = np.sin(phiphi) * rhorho - np.sqrt(a_moon**2 - z_moon**2) * np.cos(alpha_moon)
-            z_moonFrame = np.cos(phiphi) * rhorho - z_moon
+            y_moonFrame = np.sin(phiphi) * zz - np.sqrt(a_moon**2 - z_moon**2) * np.cos(alpha_moon)
+            z_moonFrame = np.cos(phiphi) * zz - z_moon
 
             r = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
 
         n = number_density(r, scenario_dict[key_scenario])
 
-        if 'exomoon' in scenario_dict.keys(): # Correct for chords which are blocked by the off-center exomoon
+        if ExomoonSource: # Correct for chords which are blocked by the off-center exomoon
+
             y_moon = np.sqrt(a_moon**2-z_moon**2) * np.cos(alpha_moon)
-            yy = np.sin(phiphi) * rhorho
-            zz = np.cos(phiphi) * rhorho
+            yy = np.sin(phiphi) * zz
+            zz = np.cos(phiphi) * zz
 
             blockingMoon = (yy-y_moon)**2 + (zz-z_moon)**2 < R_moon**2
             
@@ -251,30 +243,20 @@ def optical_depth3D(phi, rho, wavelength):
 
         N = delta_x * np.sum(n, axis = 1)
 
-        sigma = 0
-        for key_species in species_dict.keys():
+        for key_species in species_dict[key_scenario].keys():
 
-            chi = species_dict[key_species][idx_scenario][1] # Mixing ratio OR number of absorbing atoms
+            sigma = 0
 
-            if not check('evaporative', key_scenario, scenario_dict[key_scenario]):
-                T = species_dict[key_species][idx_scenario][2]
+            chi = species_dict[key_scenario][key_species]['chi'] # Mixing ratio OR number of absorbing atoms
 
+            T_abs = species_dict[key_scenario][key_species]['T_abs']
 
-            else:
-
-                if 'therm_broad' in scenario_dict[key_scenario]:
-                    v_mean = species_dict[key_species][idx_scenario][2]
-                    absorber_mass = species_dict[key_species][idx_scenario][3]
-                    T = v_mean**2 * absorber_mass * np.pi / (8. * k_B)
-                
-                else:
-                    T = 0   # No thermal broadening
-
-            sigma += absorption_cross_section(wavelength, chi, T, key_species)
+            sigma += absorption_cross_section(wavelength, chi, T_abs, key_species)
 
         
         if 'rayleigh_scatt' in scenario_dict[key_scenario]:
-            sigma += rayleigh_scattering(wavelength)
+            if scenario_dict[key_scenario]['rayleigh_scatt']:
+                sigma += rayleigh_scattering(wavelength)
 
         tau += np.tensordot(sigma, N, axes = 0)
 
@@ -287,28 +269,9 @@ def optical_depth3D(phi, rho, wavelength):
 def transit_depth(wavelength):
     """Calculate the wavelength-dependent transit depth
     """
+    if sphericalSymmetry:
 
-    if phi_steps > 0:
-
-        phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
-        rho = np.linspace(R_0, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - R_0) / float(z_steps)
-        
-        single_chord = np.exp(-optical_depth3D(phi, rho, wavelength))
-
-        delta_rho = (R_s - R_0) / float(z_steps)
-        delta_phi = 2 * np.pi / float(phi_steps)
-
-        integral_phi = delta_phi * np.sum(single_chord, axis = 1)
-
-        sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1])
-
-        if 'exomoon' in scenario_dict.keys():
-            sum_over_chords -= np.pi * R_moon**2
-
-        return sum_over_chords / (np.pi * R_s**2)
-
-    else:
-        if any(['center_exomoon_on' in element for element in scenario_dict.values()]):
+        if ExomoonSource:
             starting_z = R_moon
         
         else:
@@ -324,28 +287,47 @@ def transit_depth(wavelength):
     
         return 2 * sum_over_chords / R_s**2
 
+    else:
+
+        phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
+        z = np.linspace(R_0, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - R_0) / float(z_steps)
+        
+        single_chord = np.exp(-optical_depth3D(phi, z, wavelength))
+        print(np.shape(single_chord))
+        delta_z = (R_s - R_0) / float(z_steps)
+        delta_phi = 2 * np.pi / float(phi_steps)
+
+        integral_phi = delta_phi * np.sum(single_chord, axis = 1)
+
+        sum_over_chords = delta_z * np.tensordot(z, integral_phi, axes = [0, 1])
+
+        if ExomoonSource:
+            sum_over_chords -= np.pi * R_moon**2
+
+        return sum_over_chords / (np.pi * R_s**2)
+
 """
 Additional Functionality
 """
 
 def BarometricBenchmark(params):
-    T = params[0]
-    P_0 = params[1]
-    mu = params[2]
+    T = params['T']
+    P_0 = params['P_0']
+    mu = params['mu']
 
     H = k_B * T * R_0**2 / (G * mu * M_p)
     g = G * M_p / R_0**2
 
     sigma = 0
-    for key_species in param['Species'].keys():
-        for parameter_list in param['Species'][key_species]:
-            if parameter_list[0] == 'barometric':
-                chi = parameter_list[1]
-                T = parameter_list[2]
-            else:
-                continue
+    for key_species in species_dict['barometric'].keys():
+
+        chi = species_dict['barometric'][key_species]['chi']
+        T_abs = species_dict['barometric'][key_species]['T_abs']
     
-        sigma += absorption_cross_section(wavelength, chi, T, key_species)
+        sigma += absorption_cross_section(wavelength, chi, T_abs, key_species)
+    
+    if scenario_dict['barometric']['RayleighScatt']:
+            sigma += rayleigh_scattering(wavelength)
 
     kappa = sigma / mu
     R_lambda = R_0 + H * (euler_mascheroni + np.log(P_0 * kappa / g * np.sqrt(2 * np.pi * R_0 / H)))
@@ -361,35 +343,48 @@ Read in values from the setup file
 with open('../settings.txt') as file:
     param = json.load(file)
 
+sphericalSymmetry = param['sphericalSymmetry']
+ExomoonSource = param['ExomoonSource']
+ExomoonOffCenter = param['ExomoonOffCenter']
 
 
-R_s = param['R_star']
-R_0 = param['R_0']
-M_p = param['M_p']
-a_p = param['a_p']
-R_moon = param['R_moon']
-a_moon = param['a_moon']
-alpha_moon = param['alpha_moon']
-z_moon = param['z_moon']
+architecture_dict = param['Architecture']
+
+R_s = architecture_dict['R_star']
+R_0 = architecture_dict['R_0']
+M_p = architecture_dict['M_p']
+a_p = architecture_dict['a_p']
+
+if ExomoonSource:
+    R_moon = architecture_dict['R_moon']
+
+if ExomoonOffCenter:
+    a_moon = architecture_dict['a_moon']
+    alpha_moon = architecture_dict['alpha_moon']
+    z_moon = architecture_dict['z_moon']
+
 
 scenario_dict = param['Scenarios']
 lines_dict = param['Lines']
 species_dict = param['Species']
 
+grids_dict = param['Grids']
 
+wavelength = np.linspace(grids_dict['lower_w'], grids_dict['upper_w'], 1 + int((grids_dict['upper_w'] - grids_dict['lower_w']) / grids_dict['resolution']))
+upper_x = grids_dict['upper_x']
+x_steps = grids_dict['x_steps']
+z_steps = grids_dict['z_steps']
 
-wavelength = np.linspace(param['lower_w'], param['upper_w'], 1 + int((param['upper_w'] - param['lower_w']) / param['resolution']))
-upper_x = param['upper_x']
-x_steps = param['x_steps']
-phi_steps = param['phi_steps']
-z_steps = param['z_steps']
+if not sphericalSymmetry:
+    phi_steps = grids_dict['phi_steps']
 
-benchmark_ON = param['benchmark']
+output_dict = param['Output']
+
+output_path = output_dict['output_path']
+benchmark = output_dict['benchmark']
 
 
 number_density_dict = {'barometric': barometric, 'hydrostatic': hydrostatic, 'escaping': escaping, 'exomoon': exomoon}
-
-
 
 
 """
@@ -408,8 +403,8 @@ print(np.round(100*(1-min(spectrum)), 5))
 print("The minimal flux decrease due to atmospheric/exospheric absorption in percent is:")
 print(np.round(100*(1-max(spectrum)), 5))
 
-if benchmark_ON == 'yes':
-    benchmark_spectrum = BarometricBenchmark(param['Scenarios']['barometric'])
+if benchmark:
+    benchmark_spectrum = BarometricBenchmark(scenario_dict['barometric'])
 
     np.savetxt('../test.txt', np.c_[wavelength, spectrum, benchmark_spectrum])
     
