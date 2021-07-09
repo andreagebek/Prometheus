@@ -226,8 +226,8 @@ if ExomoonOffCenter:
     R_moon = scenario_dict['exomoon']['R_moon']
 
     a_moon = read_value('Enter the orbital distance between the exomoon and the planet in planetary radii (measured from the centers of the bodies):', 1, a_p / R_0, R_0, round = False)
-    alpha_moon = read_value('Enter the phase angle of the exomoon in degrees (0 is to the left when the exoplanetary system is viewed from the observers \
-perspective, 90 corresponds to the exomoon sitting between the planet and the observer):', 0, 360, 2. * np.pi / 360., round = False, digits = 2, accept_borders = True)
+    alpha_moon = read_value('Enter the phase angle of the exomoon in degrees (0 is to the right when the exoplanetary system is viewed from the observers \
+perspective, 90 corresponds to the exomoon sitting between the planet and the host star):', 0, 360, 2. * np.pi / 360., round = False, digits = 2, accept_borders = True)
     z_moon = read_value('Enter the elevation (z-coordinate) of the exomoon with respect to the star-planet plane in planetary radii:', 0, a_moon / R_0, R_0, round = False, accept_borders = True)
 
     architecture_dict.update({'R_moon': R_moon, 'a_moon': a_moon, 'alpha_moon': alpha_moon, 'z_moon': z_moon})
@@ -272,7 +272,7 @@ for key_scenario in scenario_dict.keys():
     species_dict[key_scenario] = {}
 
     for value in lines_dict.values():
-        
+
         element = value[4]
         species_dict[key_scenario][element] = {}
 
@@ -345,9 +345,9 @@ print('\nSpecify the output.\n')
 
 output_dict = {}
 
-output_path = read_str('How do you want to name the output .txt file containing the spectrum (enter the file name without the .txt ending)?')
+outputFilename = read_str('How do you want to name the output .txt file containing the spectrum (enter the file name without the .txt ending)?')
 
-output_dict['output_path'] = output_path
+output_dict['outputFilename'] = outputFilename
 
 if 'barometric' in scenario_dict.keys():
     benchmark = read_str('Do you want to record the analytical benchmark for the barometric scenario?', ['yes', 'no'])
@@ -356,6 +356,9 @@ if 'barometric' in scenario_dict.keys():
 else:
     output_dict['benchmark'] = False
 
+record_tau = read_str('Do you want to record the optical depth for all chords of the spatial grid at the wavelength with the largest flux decrease?', ['yes', 'no'])
+
+output_dict['record_tau'] = record_tau
 
 """
 Write parameter dictionary and store it as json file

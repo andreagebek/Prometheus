@@ -187,9 +187,8 @@ def optical_depth(z, wavelength):
 
         N = delta_x * np.sum(n, axis = 1)
 
+        sigma = 0
         for key_species in species_dict[key_scenario].keys():
-
-            sigma = 0
 
             chi = species_dict[key_scenario][key_species]['chi'] # Mixing ratio OR number of absorbing atoms
 
@@ -207,11 +206,11 @@ def optical_depth(z, wavelength):
     return tau
 
 
-def optical_depth3D(phi, z, wavelength):
+def optical_depth3D(phi, rho, wavelength):
 
     x = np.linspace(a_p - upper_x, a_p + upper_x, int(x_steps) + 1)[:-1] + upper_x / float(x_steps)
     delta_x = 2 * upper_x / float(x_steps)
-    xx, phiphi, zz = np.meshgrid(x, phi, z)
+    xx, phiphi, rhorho = np.meshgrid(x, phi, rho)
 
     tau = 0
     for key_scenario in species_dict.keys():
@@ -220,32 +219,31 @@ def optical_depth3D(phi, z, wavelength):
 
         if key_scenario == 'barometric' or key_scenario == 'hydrostatic' or key_scenario == 'escaping':
         
-            r = np.sqrt((xx - a_p)**2 + zz**2)
+            r = np.sqrt((xx - a_p)**2 + rhorho**2)
 
         elif key_scenario == 'exomoon':
-            x_moonFrame = xx - a_p - np.sqrt(a_moon**2 - z_moon**2) * np.sin(alpha_moon)
-            y_moonFrame = np.sin(phiphi) * zz - np.sqrt(a_moon**2 - z_moon**2) * np.cos(alpha_moon)
-            z_moonFrame = np.cos(phiphi) * zz - z_moon
+            x_moonFrame = xx - a_p + np.sqrt(a_moon**2 - z_moon**2) * np.sin(alpha_moon)
+            y_moonFrame = np.sin(phiphi) * rhorho - np.sqrt(a_moon**2 - z_moon**2) * np.cos(alpha_moon)
+            z_moonFrame = np.cos(phiphi) * rhorho - z_moon
 
             r = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
 
         n = number_density(r, scenario_dict[key_scenario])
 
-        if ExomoonSource: # Correct for chords which are blocked by the off-center exomoon
+        if ExomoonSource: # Correct for chords which are blocked by the off-center exomoon (but NOT by the exoplanet)
 
             y_moon = np.sqrt(a_moon**2-z_moon**2) * np.cos(alpha_moon)
-            yy = np.sin(phiphi) * zz
-            zz = np.cos(phiphi) * zz
+            yy = np.sin(phiphi) * rhorho
+            zz = np.cos(phiphi) * rhorho
 
-            blockingMoon = (yy-y_moon)**2 + (zz-z_moon)**2 < R_moon**2
+            blockingMoon = ((yy-y_moon)**2 + (zz-z_moon)**2 < R_moon**2) * (rhorho > R_0)
             
             n = np.where(blockingMoon, 0, n)
 
         N = delta_x * np.sum(n, axis = 1)
 
+        sigma = 0
         for key_species in species_dict[key_scenario].keys():
-
-            sigma = 0
 
             chi = species_dict[key_scenario][key_species]['chi'] # Mixing ratio OR number of absorbing atoms
 
@@ -253,7 +251,7 @@ def optical_depth3D(phi, z, wavelength):
 
             sigma += absorption_cross_section(wavelength, chi, T_abs, key_species)
 
-        
+      
         if 'rayleigh_scatt' in scenario_dict[key_scenario]:
             if scenario_dict[key_scenario]['rayleigh_scatt']:
                 sigma += rayleigh_scattering(wavelength)
@@ -290,16 +288,16 @@ def transit_depth(wavelength):
     else:
 
         phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
-        z = np.linspace(R_0, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - R_0) / float(z_steps)
+        rho = np.linspace(R_0, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - R_0) / float(z_steps)
         
-        single_chord = np.exp(-optical_depth3D(phi, z, wavelength))
-        print(np.shape(single_chord))
-        delta_z = (R_s - R_0) / float(z_steps)
+        single_chord = np.exp(-optical_depth3D(phi, rho, wavelength))
+
+        delta_rho = (R_s - R_0) / float(z_steps)
         delta_phi = 2 * np.pi / float(phi_steps)
 
         integral_phi = delta_phi * np.sum(single_chord, axis = 1)
 
-        sum_over_chords = delta_z * np.tensordot(z, integral_phi, axes = [0, 1])
+        sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1])
 
         if ExomoonSource:
             sum_over_chords -= np.pi * R_moon**2
@@ -380,8 +378,9 @@ if not sphericalSymmetry:
 
 output_dict = param['Output']
 
-output_path = output_dict['output_path']
+outputFilename = output_dict['outputFilename']
 benchmark = output_dict['benchmark']
+record_tau = output_dict['record_tau']
 
 
 number_density_dict = {'barometric': barometric, 'hydrostatic': hydrostatic, 'escaping': escaping, 'exomoon': exomoon}
@@ -392,7 +391,7 @@ Execute the code and save the output as a .txt file
 """
 
 spectrum = transit_depth(wavelength)
-np.savetxt('../test.txt', np.c_[wavelength, spectrum])
+np.savetxt('../' + outputFilename + '.txt', np.c_[wavelength, spectrum])
 
 elapsed_time = datetime.now() - startTime
 
@@ -406,9 +405,41 @@ print(np.round(100*(1-max(spectrum)), 5))
 if benchmark:
     benchmark_spectrum = BarometricBenchmark(scenario_dict['barometric'])
 
-    np.savetxt('../test.txt', np.c_[wavelength, spectrum, benchmark_spectrum])
+    np.savetxt('../' + outputFilename + '.txt', np.c_[wavelength, spectrum, benchmark_spectrum])
     
     print("The maximal BENCHMARK flux decrease due to atmospheric/exospheric absorption in percent is:")
     print(np.round(100*(1-min(benchmark_spectrum)), 5))
     print("The minimal BENCHMARK flux decrease due to atmospheric/exospheric absorption in percent is:")
     print(np.round(100*(1-max(benchmark_spectrum)), 5))
+
+if record_tau:
+    idx_maxabs = np.argmin(spectrum)
+    w_maxabs = wavelength[idx_maxabs]
+
+    if sphericalSymmetry:
+
+        if ExomoonSource:
+            starting_z = R_moon
+        
+        else:
+            starting_z = R_0
+
+        z = np.linspace(starting_z, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - starting_z) / float(z_steps)
+
+        tau = optical_depth(z, w_maxabs)
+    
+    else:
+
+        phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
+        rho = np.linspace(R_0, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - R_0) / float(z_steps)
+
+        phiphi, rhorho = np.meshgrid(phi, rho, indexing = 'ij')
+        
+        phiphi = phiphi.reshape(int(phi_steps * z_steps))
+        rhorho = rhorho.reshape(int(phi_steps * z_steps))
+
+        tau = optical_depth3D(phi, rho, w_maxabs).reshape(int(phi_steps * z_steps))
+
+        np.savetxt('../' + outputFilename + '_tau.txt', np.array([phiphi, rhorho, tau]).T)
+    
+    
