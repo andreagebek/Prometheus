@@ -76,4 +76,4 @@ ax.set_aspect('equal', adjustable='box')
 
 plt.tight_layout()
 
-plt.savefig('../../' + outputFilename + '_tau.pdf', dpi = 150)
+plt.savefig('../../' + outputFilename + '_tau.pdf', dpi = 50)
