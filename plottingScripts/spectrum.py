@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
 import json
+import sys
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
@@ -26,8 +27,9 @@ matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 Read in settings file and stored spectrum
 """
 
+paramsFilename = sys.argv[1]
 
-with open('../../settings.txt') as file:
+with open('../../' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
 lower_w = param['Grids']['lower_w']
@@ -35,9 +37,7 @@ upper_w = param['Grids']['upper_w']
 
 benchmark = param['Output']['benchmark']
 
-outputFilename = param['Output']['outputFilename']
-
-SpectrumFile = np.loadtxt('../../' + outputFilename + '.txt')
+SpectrumFile = np.loadtxt('../../' + paramsFilename + '_spectrum.txt')
 
 wavelength = SpectrumFile[:, 0] * 1e8 # In Angstrom
 transit_depth = SpectrumFile[:, 1] + (1 - np.max(SpectrumFile[:, 1]))
@@ -72,4 +72,4 @@ ax.set_ylim(np.min(transit_depth) - 0.05 * (1 - np.min(transit_depth)), 1 + 0.05
 
 plt.tight_layout()
 
-plt.savefig('../../' + outputFilename + '_spectrum.pdf', dpi = 150)
+plt.savefig('../../' + paramsFilename + '_spectrumPlot.pdf', dpi = 150)

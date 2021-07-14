@@ -341,13 +341,11 @@ if not sphericalSymmetry:
 Additional output
 """
 
-print('\nSpecify the output.\n')
+print('\nFinally, specify the output.\n')
 
 output_dict = {}
 
-outputFilename = read_str('How do you want to name the output .txt file containing the spectrum (enter the file name without the .txt ending)?')
-
-output_dict['outputFilename'] = outputFilename
+paramsFilename = read_str('How do you want to name the txt file containing the parameters of this session (enter the file name without the .txt ending)?')
 
 if 'barometric' in scenario_dict.keys():
     benchmark = read_str('Do you want to record the analytical benchmark for the barometric scenario?', ['yes', 'no'])
@@ -364,10 +362,11 @@ output_dict['record_tau'] = record_tau
 Write parameter dictionary and store it as json file
 """
 
+print('All parameters are stored! To run PROMETHEUS, type <python main.py filename> and replace <filename> with the name you specified for the parameter txt file.')
 
 parameters = {'Architecture': architecture_dict, 'Scenarios': scenario_dict, 'Lines': lines_dict, 'Species': species_dict, 'Grids': grids_dict, 'Output': output_dict,
 'sphericalSymmetry': sphericalSymmetry, 'ExomoonSource': ExomoonSource, 'ExomoonOffCenter': ExomoonOffCenter}
 
 
-with open('../settings.txt', 'w') as outfile:
+with open('../' + paramsFilename + '.txt', 'w') as outfile:
     json.dump(parameters, outfile)

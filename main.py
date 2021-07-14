@@ -5,6 +5,7 @@ Created on 3. June 2021 by Andrea Gebek.
 
 import numpy as np
 import json
+import sys
 from scipy.special import wofz
 from datetime import datetime
 from constants import *
@@ -197,8 +198,8 @@ def optical_depth(z, wavelength):
             sigma += absorption_cross_section(wavelength, chi, T_abs, key_species)
 
         
-        if 'rayleigh_scatt' in scenario_dict[key_scenario]:
-            if scenario_dict[key_scenario]['rayleigh_scatt']:
+        if 'RayleighScatt' in scenario_dict[key_scenario].keys():
+            if scenario_dict[key_scenario]['RayleighScatt']:
                 sigma += rayleigh_scattering(wavelength)
 
         tau += np.tensordot(sigma, N, axes = 0)
@@ -251,9 +252,8 @@ def optical_depth3D(phi, rho, wavelength):
 
             sigma += absorption_cross_section(wavelength, chi, T_abs, key_species)
 
-      
-        if 'rayleigh_scatt' in scenario_dict[key_scenario]:
-            if scenario_dict[key_scenario]['rayleigh_scatt']:
+        if 'RayleighScatt' in scenario_dict[key_scenario].keys():
+            if scenario_dict[key_scenario]['RayleighScatt']:
                 sigma += rayleigh_scattering(wavelength)
 
         tau += np.tensordot(sigma, N, axes = 0)
@@ -338,7 +338,9 @@ def BarometricBenchmark(params):
 Read in values from the setup file
 """
 
-with open('../settings.txt') as file:
+paramsFilename = sys.argv[1]
+
+with open('../' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
 sphericalSymmetry = param['sphericalSymmetry']
@@ -378,7 +380,6 @@ if not sphericalSymmetry:
 
 output_dict = param['Output']
 
-outputFilename = output_dict['outputFilename']
 benchmark = output_dict['benchmark']
 record_tau = output_dict['record_tau']
 
@@ -391,7 +392,7 @@ Execute the code and save the output as a .txt file
 """
 
 spectrum = transit_depth(wavelength)
-np.savetxt('../' + outputFilename + '.txt', np.c_[wavelength, spectrum])
+np.savetxt('../' + paramsFilename + '_spectrum.txt', np.c_[wavelength, spectrum], header = 'Wavelength [Angstrom], Transit depth spectrum')
 
 elapsed_time = datetime.now() - startTime
 
@@ -405,7 +406,8 @@ print(np.round(100*(1-max(spectrum)), 5))
 if benchmark:
     benchmark_spectrum = BarometricBenchmark(scenario_dict['barometric'])
 
-    np.savetxt('../' + outputFilename + '.txt', np.c_[wavelength, spectrum, benchmark_spectrum])
+    np.savetxt('../' + paramsFilename + '_spectrum.txt', np.c_[wavelength, spectrum, benchmark_spectrum], 
+    header = 'Wavelength [Angstrom], Transit depth spectrum, Transit depth benchmark')
     
     print("The maximal BENCHMARK flux decrease due to atmospheric/exospheric absorption in percent is:")
     print(np.round(100*(1-min(benchmark_spectrum)), 5))
@@ -427,6 +429,8 @@ if record_tau:
         z = np.linspace(starting_z, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - starting_z) / float(z_steps)
 
         tau = optical_depth(z, w_maxabs)
+
+        np.savetxt('../' + paramsFilename + '_tau.txt', np.array([z, tau]).T, header = 'z [cm], tau')        
     
     else:
 
@@ -440,6 +444,6 @@ if record_tau:
 
         tau = optical_depth3D(phi, rho, w_maxabs).reshape(int(phi_steps * z_steps))
 
-        np.savetxt('../' + outputFilename + '_tau.txt', np.array([phiphi, rhorho, tau]).T)
+        np.savetxt('../' + paramsFilename + '_tau.txt', np.array([phiphi, rhorho, tau]).T, header = 'phi grid [rad], rho grid [cm], tau')
     
     
