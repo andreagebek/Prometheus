@@ -10,7 +10,7 @@ import json
 from constants import *
 
 
-def read_value(text, lower, upper, unit, round = True, digits = 0, accept_borders = False):
+def read_value(text, lower, upper, unit, round = True, digits = 0, accept_borders = False, break_zero = False):
     
     while True:
 
@@ -35,6 +35,10 @@ def read_value(text, lower, upper, unit, round = True, digits = 0, accept_border
             continue
         
         value = float(string)
+
+        if break_zero and value == 0:
+            return 0
+            break
 
         if value > lower and value < upper:
             return value * unit
@@ -91,6 +95,11 @@ Fundamentals
 """
 print('\nWelcome to PROMETHEUS! First, read in some parameters related to the architecture of the exoplanetary system.\n')
 
+mode = read_str('Do you want to model a transmission spectrum or a light curve?', ['spectrum', 'lightcurve'])
+
+if mode == 'lightcurve':
+    sphericalSymmetry = False
+
 system_list = []
 for key, value in planets_dict.items():
     system_list.append(key)
@@ -113,13 +122,13 @@ else:
 
 architecture_dict = {'R_star': R_star, 'R_0': R_0, 'M_p': M_p, 'a_p': a_p}
 
-"""
-direction = read_str('Do you want to perform forward or inverse modelling?', ['forward'])
 
-mode = read_str('Do you want to model a transmission spectrum or a light curve?', ['spectrum'])
+#direction = read_str('Do you want to perform forward or inverse modelling?', ['forward'])
 
-dishoom_import = read_str('Do you want to import parameters from DISHOOM?', ['no'])
-"""
+
+
+#dishoom_import = read_str('Do you want to import parameters from DISHOOM?', ['no'])
+
 
 
 """
@@ -149,7 +158,7 @@ while True:
             
         #winds_ON = read_str('Do you want to add winds in this scenario?', ['no'])
 
-        params = {'T': T, 'P_0': P_0, 'mu': mu, 'RayleighScatt': RayleighScatt}
+        params = {'T': T, 'P_0': P_0, 'mu': mu, 'M_p': M_p, 'R_0': R_0, 'RayleighScatt': RayleighScatt}
 
         if scenario_name == 'barometric':
             scenario_list.remove('hydrostatic')
@@ -169,11 +178,11 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number'])
             T = read_value('Enter the temperature of the escaping wind in Kelvin:', 1, 1e6, 1)
             P_0 = read_value('Enter the pressure at the base of the wind in bar:', 1e-15, 1e3, 1e6)
 
-            params = {'q_esc': q_esc, 'T': T, 'P_0': P_0}
+            params = {'q_esc': q_esc, 'T': T, 'P_0': P_0, 'R_0': R_0}
         
         else:
 
-            params = {'q_esc': q_esc}
+            params = {'q_esc': q_esc, 'R_0': R_0}
 
         PlanetarySource = True
 
@@ -211,13 +220,13 @@ system architecture parameters for the exomoon.
 
 if ExomoonSource:
 
-    if not PlanetarySource:
+    if not PlanetarySource and mode == 'spectrum':
         
         ExomoonOffCenter = not(read_str('Do you want to make the approximation that the exomoon sits at the planetary center, neglecting the planet itself?', ['yes', 'no']))
     
     else:
 
-        ExomoonOffCenter = True # Both a planetary source and an exomoon are present
+        ExomoonOffCenter = True # Both a planetary source and an exomoon are present, or we are considering a light curve
     
 if ExomoonOffCenter:
 
@@ -226,11 +235,23 @@ if ExomoonOffCenter:
     R_moon = scenario_dict['exomoon']['R_moon']
 
     a_moon = read_value('Enter the orbital distance between the exomoon and the planet in planetary radii (measured from the centers of the bodies):', 1, a_p / R_0, R_0, round = False)
-    alpha_moon = read_value('Enter the phase angle of the exomoon in degrees (0 is to the right when the exoplanetary system is viewed from the observers \
-perspective, 90 corresponds to the exomoon sitting between the planet and the host star):', 0, 360, 2. * np.pi / 360., round = False, digits = 2, accept_borders = True)
-    z_moon = read_value('Enter the elevation (z-coordinate) of the exomoon with respect to the star-planet plane in planetary radii:', 0, a_moon / R_0, R_0, round = False, accept_borders = True)
+    orbphase_moon = read_value('Enter the orbital phase of the moon when the planet is transiting. A moon orbital phase of 0 corresponds to the moon sitting \
+between the planet and the observer, 0.25 means that the exomoon is located to the right of the planet when viewed from the observer.', -0.5, 0.5, 2. * np.pi, accept_borders = True)
 
-    architecture_dict.update({'R_moon': R_moon, 'a_moon': a_moon, 'alpha_moon': alpha_moon, 'z_moon': z_moon})
+    architecture_dict.update({'R_moon': R_moon, 'a_moon': a_moon, 'orbphase_moon': orbphase_moon})
+
+    if mode == 'spectrum':
+        z_moon = read_value('Enter the elevation (z-coordinate) of the exomoon with respect to the planet orbital plane in planetary radii:', 0, a_moon / R_0, R_0, 
+        round = False, accept_borders = True)
+
+        architecture_dict['z_moon'] = z_moon
+    """
+    elif mode == 'lightcurve':
+        i_moon = read_value('Enter the inclination of the moon orbital plane with respect to the planet orbital plane in degrees:', 0, 90, 2. * np.pi / 360., accept_borders = True)
+        
+        if i_moon > 0:
+            iphase_moon = read_value('Enter the orbital phase of the moon when it ascends through the planet orbital plane:', 0)
+    """
 
     sphericalSymmetry = False
 
@@ -322,19 +343,46 @@ Performance parameters
 
 print('\nAlmost done! Specify the discretization parameters for the wavelength and spatial grids.\n')
 
-lower_w = read_value('Enter the lower wavelength border in Angstrom:', 1e-3, 1e12, 1e-8)
-upper_w = read_value('Enter the upper wavelength border in Angstrom:', lower_w * 1e8, 1e12, 1e-8, round = False)
-resolution = read_value('Enter the resolution of the wavelength grid in Angstrom:', 1e-6, (upper_w - lower_w) * 1e8 / 2., 1e-8, round = False)
+if mode == 'spectrum':
 
-upper_x = read_value('Enter the half chord length (x-direction) for the numerical integration along the x-axis in planetary radii:', 0, a_p / R_0, R_0, round = False)
-x_steps = read_value('Enter the steps for the spatial discretization along the chord (x-direction):', 2, 1e6, 1)
+    lower_w = read_value('Enter the lower wavelength border in Angstrom:', 1e-3, 1e12, 1e-8)
+    upper_w = read_value('Enter the upper wavelength border in Angstrom:', lower_w * 1e8, 1e12, 1e-8, round = False)
+    resolution = read_value('Enter the resolution of the wavelength grid in Angstrom:', 1e-6, (upper_w - lower_w) * 1e8 / 2., 1e-8, round = False)
 
-z_steps = read_value('Enter the steps for the spatial discretization in z-direction:', 2, 1e6, 1)
+elif mode == 'lightcurve':
 
-grids_dict = {'lower_w': lower_w, 'upper_w': upper_w, 'resolution': resolution, 'upper_x': upper_x, 'x_steps': x_steps, 'z_steps': z_steps}
+    wavelength = []
+
+    while True:
+    
+        w_lightcurve = read_value('Enter a discrete wavelength for the calculation of the light curve in Angstrom, or 0 to stop adding wavelengths:', 1e-3, 1e12, 1e-8, break_zero = True)
+
+        if w_lightcurve == 0 and len(w) == 0:
+            print('You have to add at least one wavelength!')
+        
+        elif w_lightcurve == 0:
+            break
+
+        else:
+            wavelength.append(w_lightcurve)        
+
+    orbphase_border = read_value('Enter the orbital phase at which the light curve calculation starts and stops:', 0, 0.5, 2 * np.pi, accept_borders = True)
+    orbphase_steps = read_value('Enter the number of bins for the orbital phase discretization:', 2, 1e4, 1)
+
+x_border = read_value('Enter the half chord length (x-direction) for the numerical integration along the x-axis in planetary radii:', 0, a_p / R_0, R_0, round = False)
+x_steps = read_value('Enter the number of bins for the spatial discretization along the chord (x-direction):', 2, 1e6, 1)
+
+z_steps = read_value('Enter the number of bins for the spatial discretization in z-direction:', 2, 1e6, 1)
+
+
+if mode == 'spectrum':
+    grids_dict = {'lower_w': lower_w, 'upper_w': upper_w, 'resolution': resolution, 'x_border': x_border, 'x_steps': x_steps, 'z_steps': z_steps}
+
+elif mode == 'lightcurve':
+    grids_dict = {'wavelength': wavelength, 'orbphase_border': orbphase_border, 'orbphase_steps': orbphase_steps, 'x_border': x_border, 'x_steps': x_steps, 'z_steps': z_steps}
 
 if not sphericalSymmetry:
-    phi_steps = read_value('Enter the steps for the spatial discretization for the polar coordinate (phi-direction):', 2, 1e4, 1)
+    phi_steps = read_value('Enter the number of bins for the spatial discretization for the polar coordinate (phi-direction):', 2, 1e4, 1)
     grids_dict['phi_steps'] = phi_steps
 
 """
@@ -347,14 +395,18 @@ output_dict = {}
 
 paramsFilename = read_str('How do you want to name the txt file containing the parameters of this session (enter the file name without the .txt ending)?')
 
-if 'barometric' in scenario_dict.keys():
+if 'barometric' in scenario_dict.keys() and mode == 'spectrum':
     benchmark = read_str('Do you want to record the analytical benchmark for the barometric scenario?', ['yes', 'no'])
     output_dict['benchmark'] = benchmark
 
 else:
     output_dict['benchmark'] = False
 
-record_tau = read_str('Do you want to record the optical depth for all chords of the spatial grid at the wavelength with the largest flux decrease?', ['yes', 'no'])
+if mode == 'spectrum':
+    record_tau = read_str('Do you want to record the optical depth for all chords of the spatial grid at the wavelength with the largest flux decrease?', ['yes', 'no'])
+
+elif mode == 'lightcurve':
+    record_tau = False
 
 output_dict['record_tau'] = record_tau
 
@@ -365,7 +417,7 @@ Write parameter dictionary and store it as json file
 print('All parameters are stored! To run PROMETHEUS, type <python main.py filename> and replace <filename> with the name you specified for the parameter txt file.')
 
 parameters = {'Architecture': architecture_dict, 'Scenarios': scenario_dict, 'Lines': lines_dict, 'Species': species_dict, 'Grids': grids_dict, 'Output': output_dict,
-'sphericalSymmetry': sphericalSymmetry, 'ExomoonSource': ExomoonSource, 'ExomoonOffCenter': ExomoonOffCenter}
+'sphericalSymmetry': sphericalSymmetry, 'ExomoonSource': ExomoonSource, 'mode': mode}
 
 
 with open('../' + paramsFilename + '.txt', 'w') as outfile:
