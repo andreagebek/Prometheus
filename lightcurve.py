@@ -55,7 +55,7 @@ impact parameters to obtain the (wavelength-dependent) transit depth
 
 def optical_depth(phi, rho, wavelength, x_p, y_p):
 
-    x = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
+    x = np.linspace(-x_border, x_border, int(x_steps) + 1, dtype = np.dtype('f4'))[:-1] + x_border / float(x_steps)
     delta_x = 2 * x_border / float(x_steps)
     xx, phiphi, rhorho, yy_pp = np.meshgrid(x, phi, rho, y_p)
 
@@ -67,6 +67,8 @@ def optical_depth(phi, rho, wavelength, x_p, y_p):
         if key_scenario == 'barometric' or key_scenario == 'hydrostatic' or key_scenario == 'escaping':
         
             r = np.sqrt(xx**2 + (rhorho * np.sin(phiphi) - yy_pp)**2 + (rhorho * np.cos(phiphi))**2)
+            print(np.shape(r))
+            print(r.nbytes)
 
         elif key_scenario == 'exomoon':
             stopstop
@@ -77,7 +79,8 @@ def optical_depth(phi, rho, wavelength, x_p, y_p):
             r = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
 
         n = number_density(r, scenario_dict[key_scenario])
-
+        print(np.shape(n))
+        print(n.nbytes)
         blockingPlanet = (r < R_0)
         n = np.where(blockingPlanet, 0, n)
 
@@ -118,11 +121,11 @@ def transit_depth(wavelength, orbphase):
     """Calculate the wavelength-dependent transit depth
     """
 
-    phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
-    rho = np.linspace(0, R_s, int(z_steps) + 1)[:-1] + 0.5 * R_s / float(z_steps)
+    phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1, dtype = np.dtype('f4'))[:-1] + np.pi / float(phi_steps)
+    rho = np.linspace(0, R_s, int(z_steps) + 1, dtype = np.dtype('f4'))[:-1] + 0.5 * R_s / float(z_steps)
 
     x_p = a_p * np.cos(orbphase)
-    y_p = a_p * np.sin(orbphase)
+    y_p = np.array(a_p * np.sin(orbphase), dtype = np.dtype('f4'))
 
     single_chord = np.exp(-optical_depth(phi, rho, wavelength, x_p, y_p))
 
