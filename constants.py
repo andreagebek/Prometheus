@@ -15,6 +15,7 @@ R_J = 6.99e9        #Jupiter radius
 M_J = 1.898e30      #Jupiter mass
 M_E = 5.974e27      #Earth mass
 R_sun = 6.96e10     # Solar radius
+M_sun = 1.988e33
 R_Io = 1.822e8      # Io radius
 m_K = 39.0983*amu
 m_Na = 22.99*amu
@@ -40,13 +41,13 @@ speciesMass_dict = {'sodium': m_Na,
 
 """
 Planetary parameters
-Format: [Stellar radius (cm), Reference radius (cm), Planetary mass(g), Orbital distance (cm)]
+Format: [Stellar radius (cm), Stellar mass (g), Reference radius (cm), Planetary mass(g), Orbital distance (cm)]
 WASP-49b: Wyttenbach et al. 2017
 HD189733b: Wyttenbach et al. 2015
 """
 
-planets_dict = {'WASP-49b': [1.038 * R_sun, 1.198 * R_J, 0.399 * M_J, 0.03873 * AU],
-'HD189733b': [0.756 * R_sun, 1.138 * R_J, 1.138 * M_J, 0.0312 * AU]}
+planets_dict = {'WASP-49b': [1.038 * R_sun, 1.003 * M_sun, 1.198 * R_J, 0.399 * M_J, 0.03873 * AU],
+'HD189733b': [0.756 * R_sun, 0.823 * M_sun, 1.138 * R_J, 1.138 * M_J, 0.0312 * AU]}
 
 
 """

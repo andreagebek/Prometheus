@@ -59,42 +59,44 @@ def optical_depth(phi, rho, wavelength, x_p, y_p):
     delta_x = 2 * x_border / float(x_steps)
     xx, phiphi, rhorho, yy_pp = np.meshgrid(x, phi, rho, y_p)
 
+    r_fromP = np.sqrt(xx**2 + (rhorho * np.sin(phiphi) - yy_pp)**2 + (rhorho * np.cos(phiphi))**2)
+    
     tau = 0
     for key_scenario in species_dict.keys():
 
-        number_density = number_density_dict[key_scenario]
+        number_density = number_density_dict[key_scenario]        
 
         if key_scenario == 'barometric' or key_scenario == 'hydrostatic' or key_scenario == 'escaping':
         
-            r = np.sqrt(xx**2 + (rhorho * np.sin(phiphi) - yy_pp)**2 + (rhorho * np.cos(phiphi))**2)
-            print(np.shape(r))
-            print(r.nbytes)
+            n = number_density(r_fromP, scenario_dict[key_scenario])
 
         elif key_scenario == 'exomoon':
-            stopstop
-            x_moonFrame = xx - a_p - np.sqrt(a_moon**2 - z_moon**2) * np.cos(orbphase_moon)
-            y_moonFrame = np.sin(phiphi) * rhorho - np.sqrt(a_moon**2 - z_moon**2) * np.sin(orbphase_moon)
-            z_moonFrame = np.cos(phiphi) * rhorho - z_moon
 
-            r = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
+            current_orbphase_moon = orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
 
-        n = number_density(r, scenario_dict[key_scenario])
-        print(np.shape(n))
-        print(n.nbytes)
-        blockingPlanet = (r < R_0)
+            x_moonFrame = xx - a_moon * np.cos(current_orbphase_moon)
+            y_moonFrame = np.sin(phiphi) * rhorho - yy_pp - a_moon * np.sin(current_orbphase_moon)
+            z_moonFrame = np.cos(phiphi) * rhorho
+
+            r_fromMoon = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
+
+            n = number_density(r_fromMoon, scenario_dict[key_scenario])
+
+        yy = rhorho * np.sin(phiphi)
+        zz = np.cos(phiphi) * rhorho
+        blockingPlanet = (np.sqrt((yy - yy_pp)**2 + zz**2) < R_0)
         n = np.where(blockingPlanet, 0, n)
 
-        behindSun = (xx + x_p < 0)
-        n = np.where(behindSun, 0, n)
+        behindStar = (xx + x_p < 0)
+        n = np.where(behindStar, 0, n)
 
-        if ExomoonSource: # Correct for chords which are blocked by the off-center exomoon (but NOT by the exoplanet)
+        if ExomoonSource: # Correct for chords which are blocked by the exomoon
 
-            y_moon = np.sqrt(a_moon**2-z_moon**2) * np.sin(orbphase_moon)
-            yy = np.sin(phiphi) * rhorho
-            zz = np.cos(phiphi) * rhorho
+            current_orbphase_moon = orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
+            y_moon = yy_pp + a_moon * np.sin(current_orbphase_moon)
 
-            blockingMoon = ((yy-y_moon)**2 + (zz-z_moon)**2 < R_moon**2) * (rhorho > R_0)
-            
+            blockingMoon = ((yy - y_moon)**2 + zz**2 < R_moon**2) 
+
             n = np.where(blockingMoon, 0, n)
 
         N = delta_x * np.sum(n, axis = 1)
@@ -126,20 +128,33 @@ def transit_depth(wavelength, orbphase):
 
     x_p = a_p * np.cos(orbphase)
     y_p = np.array(a_p * np.sin(orbphase), dtype = np.dtype('f4'))
-
+    
     single_chord = np.exp(-optical_depth(phi, rho, wavelength, x_p, y_p))
 
     delta_rho = R_s / float(z_steps)
     delta_phi = 2 * np.pi / float(phi_steps)
 
     integral_phi = delta_phi * np.sum(single_chord, axis = 1)
-
-    A_occ_p = A_intersect(R_0, R_s, y_p, x_p)
+    
+    A_occ_p = A_intersect(R_0, R_s, y_p, x_p) # Area of the planet blocking the stellar disk
 
     sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1]) - A_occ_p
-
+    
     if ExomoonSource:
-        sum_over_chords -= np.pi * R_moon**2
+
+        current_orbphase_moon = orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
+
+        y_p_moon = a_moon * np.sin(current_orbphase_moon) # y-coordinate of the exomoon relative to the exoplanet
+
+        y_moon = y_p + y_p_moon # y-coordinate of the exomoon in the main coordinate frame
+
+        A_moonOnP = np.where(A_occ_p > 0, A_intersect(R_moon, R_0, y_p_moon, x_p), 0) # If the planet is not transiting the area of the moon on the planet does not matter
+        A_occ_moon = np.clip(A_intersect(R_moon, R_s, y_moon, x_p) - A_moonOnP, a_min = 0, a_max = None) 
+        # Area of the exomoon blocking the stellar disk (but not the exoplanet). The above equation is wrong during planetary ingress and egress,
+        # as the actual A_occ_moon is the area of the moon on the stellar disk minus the intersection area of moon, planet and star.
+        # But this becomes extremely cumbersome...
+
+        sum_over_chords -= A_occ_moon
 
     return sum_over_chords / (np.pi * R_s**2)
 
@@ -159,6 +174,7 @@ ExomoonSource = param['ExomoonSource']
 architecture_dict = param['Architecture']
 
 R_s = architecture_dict['R_star']
+M_s = architecture_dict['M_star']
 R_0 = architecture_dict['R_0']
 M_p = architecture_dict['M_p']
 a_p = architecture_dict['a_p']

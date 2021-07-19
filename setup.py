@@ -110,17 +110,19 @@ systemname = read_str('Enter the name of the exoplanetary system or zero if para
 
 if systemname == '0':
     R_star = read_value('Enter the radius of the host star in solar radii:', 1e-5, 1e5, R_sun)
+    M_star = read_value('Enter the mass of the host star in solar masses:', 1e-5, 1e10, M_sun)
     R_0 = read_value('Enter the radius of the exoplanet in Jupiter radii:', 1e-5, 1e5, R_J)
     M_p = read_value('Enter the mass of the exoplanet in Jupiter masses:', 1e-5, 1e3, M_J)
     a_p = read_value('Enter the orbital distance between planet and star in AU:', 1e-5, 1e3, AU)
 
 else:
     R_star = planets_dict[systemname][0]
-    R_0 = planets_dict[systemname][1]
-    M_p = planets_dict[systemname][2]
-    a_p = planets_dict[systemname][3]
+    M_star = planets_dict[systemname][1]
+    R_0 = planets_dict[systemname][2]
+    M_p = planets_dict[systemname][3]
+    a_p = planets_dict[systemname][4]
 
-architecture_dict = {'R_star': R_star, 'R_0': R_0, 'M_p': M_p, 'a_p': a_p}
+architecture_dict = {'R_star': R_star, 'M_star': M_star, 'R_0': R_0, 'M_p': M_p, 'a_p': a_p}
 
 
 #direction = read_str('Do you want to perform forward or inverse modelling?', ['forward'])
@@ -357,7 +359,7 @@ elif mode == 'lightcurve':
     
         w_lightcurve = read_value('Enter a discrete wavelength for the calculation of the light curve in Angstrom, or 0 to stop adding wavelengths:', 1e-3, 1e12, 1e-8, break_zero = True)
 
-        if w_lightcurve == 0 and len(w) == 0:
+        if w_lightcurve == 0 and len(wavelength) == 0:
             print('You have to add at least one wavelength!')
         
         elif w_lightcurve == 0:

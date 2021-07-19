@@ -13,6 +13,28 @@ from sigma_abs import *
 
 startTime = datetime.now()
 
+"""
+Helper function to calculate the area of two intersecting circles
+"""
+
+
+def A_intersect(r1, r2, d):
+
+    if np.abs(d) > (r1 + r2):
+        A = 0
+    
+    elif np.abs(d) < np.abs(r1 - r2):
+        A = np.pi * np.min((r1, r2))**2
+    
+    else:
+        term1 = (r1**2 - r2**2 + d**2) / (2. * np.abs(d))
+        term2 = (r2**2 - r1**2 + d**2) / (2. * np.abs(d))
+        term3 = r1**2 * np.arccos(term1 / r1) - term1 * np.sqrt(r1**2 - term1**2)
+        term4 = r2**2 * np.arccos(term2 / r2) - term2 * np.sqrt(r2**2 - term2**2)
+
+        A = term3 + term4
+  
+    return A
 
 
 """
@@ -49,13 +71,13 @@ def optical_depth(phi, rho, wavelength):
 
         n = number_density(r, scenario_dict[key_scenario])
 
-        if ExomoonSource: # Correct for chords which are blocked by the off-center exomoon (but NOT by the exoplanet)
+        if ExomoonSource: # Correct for chords which are blocked by the off-center exomoon 
 
-            y_moon = np.sqrt(a_moon**2-z_moon**2) * np.sin(orbphase_moon)
+            y_moon = np.sqrt(a_moon**2 - z_moon**2) * np.sin(orbphase_moon)
             yy = np.sin(phiphi) * rhorho
             zz = np.cos(phiphi) * rhorho
 
-            blockingMoon = ((yy-y_moon)**2 + (zz-z_moon)**2 < R_moon**2) * (rhorho > R_0)
+            blockingMoon = ((yy - y_moon)**2 + (zz - z_moon)**2 < R_moon**2)
             
             n = np.where(blockingMoon, 0, n)
 
@@ -99,7 +121,9 @@ def transit_depth(wavelength):
     sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1])
 
     if ExomoonSource:
-        sum_over_chords -= np.pi * R_moon**2
+        y_moon = np.sqrt(a_moon**2-z_moon**2) * np.sin(orbphase_moon)
+        A_occ_moon = np.pi * R_moon**2 - A_intersect(R_moon, R_0, np.sqrt(y_moon**2 + z_moon**2)) # This is the area of the moon which is not blocked by the exoplanet
+        sum_over_chords -= A_occ_moon
 
     return sum_over_chords / (np.pi * R_s**2)
 
