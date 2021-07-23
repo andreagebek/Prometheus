@@ -26,13 +26,13 @@ def optical_depth(z, wavelength):
     """Calculate the optical depth for all absorbers along the chord 
     """
 
-    x = np.linspace(a_p - x_border, a_p + x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
+    x = np.linspace(x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
 
     delta_x = 2 * x_border / float(x_steps)
 
     xx, zz = np.meshgrid(x, z)
 
-    r = np.sqrt((xx-a_p)**2 + zz**2)
+    r = np.sqrt(xx**2 + zz**2)
 
     tau = 0
     for key_scenario in species_dict.keys():
@@ -131,7 +131,6 @@ architecture_dict = param['Architecture']
 R_s = architecture_dict['R_star']
 R_0 = architecture_dict['R_0']
 M_p = architecture_dict['M_p']
-a_p = architecture_dict['a_p']
 
 if ExomoonSource:
     R_moon = architecture_dict['R_moon']

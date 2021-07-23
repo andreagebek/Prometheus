@@ -49,7 +49,7 @@ impact parameters to obtain the (wavelength-dependent) transit depth
 
 def optical_depth(phi, rho, wavelength):
 
-    x = np.linspace(a_p - x_border, a_p + x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
+    x = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
     delta_x = 2 * x_border / float(x_steps)
     xx, phiphi, rhorho = np.meshgrid(x, phi, rho)
 
@@ -60,16 +60,26 @@ def optical_depth(phi, rho, wavelength):
 
         if key_scenario == 'barometric' or key_scenario == 'hydrostatic' or key_scenario == 'escaping':
         
-            r = np.sqrt((xx - a_p)**2 + rhorho**2)
+            r = np.sqrt(xx**2 + rhorho**2)
+
+            n = number_density(r, scenario_dict[key_scenario])
 
         elif key_scenario == 'exomoon':
-            x_moonFrame = xx - a_p - np.sqrt(a_moon**2 - z_moon**2) * np.cos(orbphase_moon)
+            x_moonFrame = xx - np.sqrt(a_moon**2 - z_moon**2) * np.cos(orbphase_moon)
             y_moonFrame = np.sin(phiphi) * rhorho - np.sqrt(a_moon**2 - z_moon**2) * np.sin(orbphase_moon)
             z_moonFrame = np.cos(phiphi) * rhorho - z_moon
 
             r = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
 
-        n = number_density(r, scenario_dict[key_scenario])
+            n = number_density(r, scenario_dict[key_scenario])
+
+        elif key_scenario == 'torus':
+
+            aa = np.sqrt(xx**2 + (np.sin(phiphi) * rhorho)**2)
+            zz = np.cos(phiphi) * rhorho
+            
+            n = number_density(aa, zz, scenario_dict[key_scenario])
+        
 
         if ExomoonSource: # Correct for chords which are blocked by the off-center exomoon 
 
@@ -121,7 +131,7 @@ def transit_depth(wavelength):
     sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1])
 
     if ExomoonSource:
-        y_moon = np.sqrt(a_moon**2-z_moon**2) * np.sin(orbphase_moon)
+        y_moon = np.sqrt(a_moon**2 - z_moon**2) * np.sin(orbphase_moon)
         A_occ_moon = np.pi * R_moon**2 - A_intersect(R_moon, R_0, np.sqrt(y_moon**2 + z_moon**2)) # This is the area of the moon which is not blocked by the exoplanet
         sum_over_chords -= A_occ_moon
 
@@ -175,7 +185,6 @@ architecture_dict = param['Architecture']
 R_s = architecture_dict['R_star']
 R_0 = architecture_dict['R_0']
 M_p = architecture_dict['M_p']
-a_p = architecture_dict['a_p']
 
 if ExomoonSource:
     R_moon = architecture_dict['R_moon']
@@ -202,7 +211,7 @@ benchmark = output_dict['benchmark']
 record_tau = output_dict['record_tau']
 
 
-number_density_dict = {'barometric': barometric, 'hydrostatic': hydrostatic, 'escaping': escaping, 'exomoon': exomoon}
+number_density_dict = {'barometric': barometric, 'hydrostatic': hydrostatic, 'escaping': escaping, 'exomoon': exomoon, 'torus': torus}
 
 
 """

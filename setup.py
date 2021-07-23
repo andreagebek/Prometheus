@@ -110,10 +110,12 @@ systemname = read_str('Enter the name of the exoplanetary system or zero if para
 
 if systemname == '0':
     R_star = read_value('Enter the radius of the host star in solar radii:', 1e-5, 1e5, R_sun)
-    M_star = read_value('Enter the mass of the host star in solar masses:', 1e-5, 1e10, M_sun)
     R_0 = read_value('Enter the radius of the exoplanet in Jupiter radii:', 1e-5, 1e5, R_J)
     M_p = read_value('Enter the mass of the exoplanet in Jupiter masses:', 1e-5, 1e3, M_J)
-    a_p = read_value('Enter the orbital distance between planet and star in AU:', 1e-5, 1e3, AU)
+
+    if mode == 'lightcurve':
+        a_p = read_value('Enter the orbital distance between planet and star in AU:', 1e-5, 1e3, AU)
+        M_star = read_value('Enter the mass of the host star in solar masses:', 1e-5, 1e10, M_sun)
 
 else:
     R_star = planets_dict[systemname][0]
@@ -122,8 +124,10 @@ else:
     M_p = planets_dict[systemname][3]
     a_p = planets_dict[systemname][4]
 
-architecture_dict = {'R_star': R_star, 'M_star': M_star, 'R_0': R_0, 'M_p': M_p, 'a_p': a_p}
+architecture_dict = {'R_star': R_star, 'R_0': R_0, 'M_p': M_p}
 
+if mode == 'lightcurve':
+    architecture_dict.update({'M_star': M_star, 'a_p': a_p})
 
 #direction = read_str('Do you want to perform forward or inverse modelling?', ['forward'])
 
@@ -169,7 +173,7 @@ while True:
 
         PlanetarySource = True
 
-    if scenario_name == 'escaping':
+    elif scenario_name == 'escaping':
 
         q_esc = read_value('Enter the power law index for the escaping atmosphere:', 3, 20, 1)
         norm_esc = read_str('Do you want to normalize the number density profile via (total) pressure or via number \
@@ -188,13 +192,22 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number'])
 
         PlanetarySource = True
 
-    if scenario_name == 'exomoon':
+    elif scenario_name == 'exomoon':
 
         R_moon = read_value('Enter the radius of the moon in Io radii:', 1e-3, 1e3, R_Io)
 
         params = {'R_moon': R_moon}
     
         ExomoonSource = True
+
+    elif scenario_name == 'torus':
+
+        a_torus = read_value('Enter the distance between the center of the torus and the center of the exoplanet in planetary radii:', 1, 1000, R_0)
+        v_ej = read_value('Enter the ejection velocity (which sets the torus scale height) of the particles from the torus in km/s:', 1e-2, 1e3, 1e5)
+ 
+        params = {'a_torus': a_torus, 'v_ej': v_ej, 'M_p': M_p}
+
+        sphericalSymmetry = False
 
     if 'T' in params.keys():
 
@@ -222,7 +235,7 @@ system architecture parameters for the exomoon.
 
 if ExomoonSource:
 
-    if not PlanetarySource and mode == 'spectrum':
+    if not PlanetarySource and sphericalSymmetry:
         
         ExomoonOffCenter = not(read_str('Do you want to make the approximation that the exomoon sits at the planetary center, neglecting the planet itself?', ['yes', 'no']))
     

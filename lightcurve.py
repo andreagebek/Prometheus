@@ -82,6 +82,13 @@ def optical_depth(phi, rho, wavelength, x_p, y_p):
 
             n = number_density(r_fromMoon, scenario_dict[key_scenario])
 
+        elif key_scenario == 'torus':
+
+            aa = np.sqrt(xx**2 + (np.sin(phiphi) * rhorho - yy_pp)**2)
+            zz = np.cos(phiphi) * rhorho
+
+            n = number_density(aa, zz, scenario_dict[key_scenario])
+
         yy = rhorho * np.sin(phiphi)
         zz = np.cos(phiphi) * rhorho
         blockingPlanet = (np.sqrt((yy - yy_pp)**2 + zz**2) < R_0)
@@ -201,7 +208,7 @@ phi_steps = grids_dict['phi_steps']
 
 output_dict = param['Output']
 
-number_density_dict = {'barometric': barometric, 'hydrostatic': hydrostatic, 'escaping': escaping, 'exomoon': exomoon}
+number_density_dict = {'barometric': barometric, 'hydrostatic': hydrostatic, 'escaping': escaping, 'exomoon': exomoon, 'torus': torus}
 
 
 """

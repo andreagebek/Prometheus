@@ -54,4 +54,4 @@ planets_dict = {'WASP-49b': [1.038 * R_sun, 1.003 * M_sun, 1.198 * R_J, 0.399 * 
 Dictionary with possible scenarios
 """
 
-scenario_list = ['barometric', 'hydrostatic', 'escaping', 'exomoon']
+scenario_list = ['barometric', 'hydrostatic', 'escaping', 'exomoon', 'torus']
