@@ -73,7 +73,7 @@ else:
     ax = fig.add_subplot(111)
 
     with np.errstate(divide = 'ignore'):
-        plt.scatter(yy, zz, c = np.log10(tau), s = 2, vmin = -3, vmax = 3, cmap = 'Spectral')
+        plt.scatter(yy, zz, c = np.log10(tau), s = 2, vmin = -3, vmax = 3, cmap = 'Spectral_r')
 
     cbar = plt.colorbar()
     cbar.set_label(r'$\log_{10}(\tau)$')
