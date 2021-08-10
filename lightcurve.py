@@ -16,31 +16,12 @@ startTime = datetime.now()
 
 
 """
-Helper function for the intersection area of two circles
+Center-to-limb variations (quadratic law)
 """
 
-def A_intersect(r1, r2, y, x):
-
-    A = []
-
-    for idx, d in enumerate(y):
-
-        if np.abs(d) > (r1 + r2) or x[idx] < 0:
-            A.append(0)
-        
-        elif np.abs(d) < np.abs(r1 - r2):
-            A.append(np.pi * np.min((r1, r2))**2)
-        
-        else:
-            term1 = (r1**2 - r2**2 + d**2) / (2. * np.abs(d))
-            term2 = (r2**2 - r1**2 + d**2) / (2. * np.abs(d))
-            term3 = r1**2 * np.arccos(term1 / r1) - term1 * np.sqrt(r1**2 - term1**2)
-            term4 = r2**2 * np.arccos(term2 / r2) - term2 * np.sqrt(r2**2 - term2**2)
-
-            A.append(term3 + term4)
-  
-    return np.array(A)
-
+def CLV(rho, R_s, u1, u2):
+    arg = 1. - np.sqrt(1. - rho**2 / R_s**2)
+    return 1. - u1 * arg - u2 * arg**2
 
 
 
@@ -92,10 +73,7 @@ def optical_depth(phi, rho, wavelength, x_p, y_p):
         yy = rhorho * np.sin(phiphi)
         zz = np.cos(phiphi) * rhorho
         blockingPlanet = (np.sqrt((yy - yy_pp)**2 + zz**2) < R_0)
-        n = np.where(blockingPlanet, 0, n)
-
-        behindStar = (xx + x_p < 0)
-        n = np.where(behindStar, 0, n)
+        n = np.where(blockingPlanet, np.inf, n)
 
         if ExomoonSource: # Correct for chords which are blocked by the exomoon
 
@@ -104,7 +82,10 @@ def optical_depth(phi, rho, wavelength, x_p, y_p):
 
             blockingMoon = ((yy - y_moon)**2 + zz**2 < R_moon**2) 
 
-            n = np.where(blockingMoon, 0, n)
+            n = np.where(blockingMoon, np.inf, n)
+        
+        behindStar = (xx + x_p < 0)
+        n = np.where(behindStar, 0, n)
 
         N = delta_x * np.sum(n, axis = 1)
 
@@ -143,27 +124,19 @@ def transit_depth(wavelength, orbphase):
 
     integral_phi = delta_phi * np.sum(single_chord, axis = 1)
     
-    A_occ_p = A_intersect(R_0, R_s, y_p, x_p) # Area of the planet blocking the stellar disk
 
-    sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1]) - A_occ_p
-    
-    if ExomoonSource:
+    if CLV_variations:
 
-        current_orbphase_moon = orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
+        sum_over_chords = delta_rho * np.tensordot(rho * CLV(rho, R_s, u1, u2), integral_phi, axes = [0, 1])
+        denominator = 2 * np.pi * delta_rho * np.sum(rho * CLV(rho, R_s, u1, u2))
 
-        y_p_moon = a_moon * np.sin(current_orbphase_moon) # y-coordinate of the exomoon relative to the exoplanet
+        return sum_over_chords / denominator
 
-        y_moon = y_p + y_p_moon # y-coordinate of the exomoon in the main coordinate frame
+    else:
+        
+        sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1])
 
-        A_moonOnP = np.where(A_occ_p > 0, A_intersect(R_moon, R_0, y_p_moon, x_p), 0) # If the planet is not transiting the area of the moon on the planet does not matter
-        A_occ_moon = np.clip(A_intersect(R_moon, R_s, y_moon, x_p) - A_moonOnP, a_min = 0, a_max = None) 
-        # Area of the exomoon blocking the stellar disk (but not the exoplanet). The above equation is wrong during planetary ingress and egress,
-        # as the actual A_occ_moon is the area of the moon on the stellar disk minus the intersection area of moon, planet and star.
-        # But this becomes extremely cumbersome...
-
-        sum_over_chords -= A_occ_moon
-
-    return sum_over_chords / (np.pi * R_s**2)
+        return sum_over_chords / (np.pi * R_s**2)
 
 
 """.
@@ -176,6 +149,7 @@ with open('../' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
 ExomoonSource = param['ExomoonSource']
+CLV_variations = param['CLV_variations']
 
 
 architecture_dict = param['Architecture']
@@ -190,6 +164,10 @@ if ExomoonSource:
     R_moon = architecture_dict['R_moon']
     a_moon = architecture_dict['a_moon']
     orbphase_moon = architecture_dict['orbphase_moon']
+
+if CLV_variations:
+    u1 = architecture_dict['u1']
+    u2 = architecture_dict['u2']
 
 
 scenario_dict = param['Scenarios']
@@ -218,7 +196,7 @@ Execute the code and save the output as a .txt file
 header = 'Orbital phase'
 
 for w in wavelength:
-    header += ', Light curve at ' + str(w * 1e8) + ' A'
+    header += ', Light curve at ' + str(w * 1e8) + ' Å'
 
 lightcurve = transit_depth(wavelength, orbphase)
 np.savetxt('../' + paramsFilename + '_lightcurve.txt', np.c_[orbphase / (2 * np.pi), lightcurve.T], header = header)

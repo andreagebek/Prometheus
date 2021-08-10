@@ -87,6 +87,8 @@ PlanetarySource = False
 ExomoonSource = False
 ExomoonOffCenter = False
 sphericalSymmetry = True
+CLV_variations = False
+RM_effect = False
 
 
 
@@ -99,6 +101,10 @@ mode = read_str('Do you want to model a transmission spectrum or a light curve?'
 
 if mode == 'lightcurve':
     sphericalSymmetry = False
+
+    CLV_variations = read_str('Do you want to take center-to-limb variations into account?', ['yes', 'no'])
+    RM_effect = read_str('Do you want to take cthe Rossiter-McLaughlin-Effect into account (note that this means that you \
+have to provide additional information about the host star to specifiy its spectrum)?', ['yes', 'no'])
 
 system_list = []
 for key, value in planets_dict.items():
@@ -117,24 +123,46 @@ if systemname == '0':
         a_p = read_value('Enter the orbital distance between planet and star in AU:', 1e-5, 1e3, AU)
         M_star = read_value('Enter the mass of the host star in solar masses:', 1e-5, 1e10, M_sun)
 
+    if RM_effect:
+        T_eff = read_value('Enter the effective temperature of the star in Kelvin:', 2300, 12000, 1)
+        log_g = read_value('Enter the logarithmic value of the surface gravity in log10(cm/s^2):', 0, 6, 1)
+        Fe_H = read_value('Enter the metallicity of the star [Fe/H]:', -4, 1, 1)
+
+        if Fe_H > -3.5 and Fe_H < 0.25: # The PHOENIX library has varying alpha-enhancement only for this metallicity range
+            alpha_Fe = read_value('Enter the alpha-enhancement of the star [alpha/Fe]:', -0.2, 1.2, 1)
+        else:
+            alpha_Fe = 0
+
 else:
     R_star = planets_dict[systemname][0]
     M_star = planets_dict[systemname][1]
     R_0 = planets_dict[systemname][2]
     M_p = planets_dict[systemname][3]
     a_p = planets_dict[systemname][4]
+    T_eff = planets_dict[systemname][5]
+    log_g = planets_dict[systemname][6]
+    Fe_H = planets_dict[systemname][7]
+    alpha_Fe = planets_dict[systemname][8]
 
 architecture_dict = {'R_star': R_star, 'R_0': R_0, 'M_p': M_p}
 
 if mode == 'lightcurve':
     architecture_dict.update({'M_star': M_star, 'a_p': a_p})
 
+if RM_effect:
+    architecture_dict.update({'T_eff': T_eff, 'log_g': log_g, 'Fe_H': Fe_H, 'alpha_Fe': alpha_Fe})
+
+if CLV_variations:
+    u1 = read_value('Enter the first (linear) coefficient for limb darkening:', -1, 1, 1)
+    u2 = read_value('Enter the second (quadratic) coefficient for limb darkening:', -1, 1, 1)
+    architecture_dict.update({'u1': u1, 'u2': u2})
+
+
 #direction = read_str('Do you want to perform forward or inverse modelling?', ['forward'])
 
-
+#WINDS
 
 #dishoom_import = read_str('Do you want to import parameters from DISHOOM?', ['no'])
-
 
 
 """
@@ -432,7 +460,7 @@ Write parameter dictionary and store it as json file
 print('All parameters are stored! To run PROMETHEUS, type <python main.py filename> and replace <filename> with the name you specified for the parameter txt file.')
 
 parameters = {'Architecture': architecture_dict, 'Scenarios': scenario_dict, 'Lines': lines_dict, 'Species': species_dict, 'Grids': grids_dict, 'Output': output_dict,
-'sphericalSymmetry': sphericalSymmetry, 'ExomoonSource': ExomoonSource, 'mode': mode}
+'sphericalSymmetry': sphericalSymmetry, 'ExomoonSource': ExomoonSource, 'CLV_variations': CLV_variations, 'RM_effect': RM_effect, 'mode': mode}
 
 
 with open('../' + paramsFilename + '.txt', 'w') as outfile:
