@@ -15,6 +15,7 @@ with open('../' + paramsFilename + '.txt') as file:
 
 mode = param['mode']
 sphericalSymmetry = param['sphericalSymmetry']
+RM_effect = param['RM_effect']
 
 if mode == 'spectrum' and sphericalSymmetry:
     os.system('python spheSymmetricSpectrum.py ' + paramsFilename)
@@ -22,5 +23,8 @@ if mode == 'spectrum' and sphericalSymmetry:
 elif mode == 'spectrum':
     os.system('python noSymmetrySpectrum.py ' + paramsFilename)
 
+elif mode == 'lightcurve' and not RM_effect:
+    os.system('python lightcurve.py ' + paramsFilename)
+
 elif mode == 'lightcurve':
-    os.system('python lightcurve.py ' + paramsFilename)  
+    os.system('python lightcurveStarSpectrum.py ' + paramsFilename)

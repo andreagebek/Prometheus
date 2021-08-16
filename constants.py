@@ -30,8 +30,8 @@ Na_D2, Na_D1: Draine 2011, Steck 2000
 K_D2, K_D1: Draine 2011, Tiecke 2011
 """
 
-absorptionlines_dict = {'Na_D2': [5.66e-13, 5889.95e-8, 3.0771e7, m_Na, 'sodium'],
-'Na_D1': [2.82e-13, 5895.92e-8, 3.0677e7, m_Na, 'sodium'],
+absorptionlines_dict = {'Na_D2': [5.66e-13, 5891.58e-8, 3.0771e7, m_Na, 'sodium'],
+'Na_D1': [2.82e-13, 5897.57e-8, 3.0677e7, m_Na, 'sodium'],
 'K_D2': [6.021e-13, 7667.01e-8, 2.978e6, m_K, 'potassium'],
 'K_D1': [3.002e-13, 7701.08e-8, 3.018e6, m_K, 'potassium']}
 

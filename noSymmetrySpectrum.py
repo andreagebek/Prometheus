@@ -47,7 +47,7 @@ impact parameters to obtain the (wavelength-dependent) transit depth
 
 
 
-def optical_depth(phi, rho, wavelength):
+def optical_depth(wavelength, phi, rho):
 
     x = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
     delta_x = 2 * x_border / float(x_steps)
@@ -121,7 +121,7 @@ def transit_depth(wavelength):
     phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
     rho = np.linspace(R_0, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - R_0) / float(z_steps)
     
-    single_chord = np.exp(-optical_depth(phi, rho, wavelength))
+    single_chord = np.exp(-optical_depth(wavelength, phi, rho))
 
     delta_rho = (R_s - R_0) / float(z_steps)
     delta_phi = 2 * np.pi / float(phi_steps)
@@ -253,7 +253,7 @@ if record_tau:
     phiphi = phiphi.reshape(int(phi_steps * z_steps))
     rhorho = rhorho.reshape(int(phi_steps * z_steps))
 
-    tau = optical_depth(phi, rho, w_maxabs).reshape(int(phi_steps * z_steps))
+    tau = optical_depth(w_maxabs, phi, rho).reshape(int(phi_steps * z_steps))
 
     np.savetxt('../' + paramsFilename + '_tau.txt', np.array([phiphi, rhorho, tau]).T, header = 'phi grid [rad], rho grid [cm], tau')   
     

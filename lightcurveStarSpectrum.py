@@ -1,27 +1,72 @@
 """
-Calculate the light curve of a transiting exoplanet.
-Created on 15. July 2021 by Andrea Gebek.
+Calculate the light curve of a transiting exoplanet,
+taking into account the host star spectrum (e.g. for the RM-effect).
+Created on 10. August 2021 by Andrea Gebek.
 """
 
 import numpy as np
 import json
 import sys
+from scipy.interpolate import interp1d
 from datetime import datetime
 from constants import *
 from n_profiles import *
 from sigma_abs import *
+from stellarspectrum import *
+
 
 
 startTime = datetime.now()
 
 
 """
-Center-to-limb variations (quadratic law)
+Calculate the host star spectrum on the spatial grid
 """
 
 def CLV(rho, u1, u2):
     arg = 1. - np.sqrt(1. - rho**2 / R_s**2)
     return 1. - u1 * arg - u2 * arg**2
+
+
+def Doppler(v):
+    # If v is positive, receiver and source are moving towards each other
+    beta = v / c
+    shift = np.sqrt((1. - beta) / (1. + beta))
+
+    return shift
+
+
+
+def F_star(wavelength, phi, rho):
+    PHOENIX_output = read_spectrum(T_eff, log_g, Fe_H, alpha_Fe)
+    w_star = PHOENIX_output[0]
+    v_max = 2. * np.pi * R_s / period_starrot
+    w_max = np.max(wavelength * Doppler(-v_max))
+    w_min = np.min(wavelength * Doppler(v_max))
+    SEL_w = np.argwhere((w_star > w_min) * (w_star < w_max))[:, 0]
+    SEL = np.concatenate((np.array([np.min(SEL_w) - 1]), SEL_w, np.array([np.max(SEL_w) + 1])))
+
+    w_star = w_star[SEL]
+    F_0 = PHOENIX_output[1][SEL]
+
+    dir_omega = np.array([-np.sin(inclination_starrot) * np.cos(azimuth_starrot), -np.sin(inclination_starrot) * np.sin(azimuth_starrot), np.cos(inclination_starrot)])
+    omega = 2. * np.pi / period_starrot * dir_omega # Angular velocity vector of the stellar rotation
+    r_surface = np.array([np.tensordot(np.sqrt(R_s**2 - rho**2), np.ones(len(phi)), axes = 0), np.tensordot(rho, np.sin(phi), axes = 0), np.tensordot(rho, np.cos(phi), axes = 0)]) 
+    # Vector to the surface of the star
+    v_los = np.cross(omega, r_surface, axisb = 0)[:, :, 0] # The line-of-sight velocity is the one along the x-axis
+    w_shift = Doppler(v_los)
+
+    F_function = interp1d(w_star, F_0, kind = 'cubic')
+    F_shifted = F_function(np.tensordot(wavelength, 1. / w_shift, axes = 0)) # This contains the shifted flux incident on the exoplanet, instead of shifting the spectra
+    # at all positions on the stellar surface just read in the spectrum at different wavelengths depending on the position in the spatial grid (phi and rho) 
+
+    if CLV_variations:
+        CLV_array = np.repeat(CLV(rho, u1, u2), len(wavelength) * len(phi)).reshape(len(rho), len(wavelength), len(phi))
+        
+        return (F_shifted * CLV_array.swapaxes(0, 1)).swapaxes(1, 2)
+    
+    else:
+        return F_shifted.swapaxes(1, 2)
 
 
 
@@ -122,21 +167,20 @@ def transit_depth(wavelength, orbphase):
     delta_rho = R_s / float(z_steps)
     delta_phi = 2 * np.pi / float(phi_steps)
 
-    integral_phi = delta_phi * np.sum(single_chord, axis = 1)
+    F_input = np.moveaxis(np.tile(F_star(wavelength, phi, rho), (len(orbphase), 1, 1, 1)), 0, 3)
+    # Make the stellar input spectrum four-dimensional: wavelength, phi, rho, orbphase
+
+    integral_phi = delta_phi * np.sum(np.multiply(F_input, single_chord), axis = 1)
+
+    sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1])
+
+    denominator_integralphi = delta_phi * np.sum(F_star(wavelength, phi, rho), axis = 1)
+    denominator_integralrho = delta_rho * np.tensordot(rho, denominator_integralphi, axes = [0, 1])
+    denominator = np.tile(denominator_integralrho, (len(orbphase), 1)).T
     
+    return sum_over_chords / denominator
 
-    if CLV_variations:
 
-        sum_over_chords = delta_rho * np.tensordot(rho * CLV(rho, R_s, u1, u2), integral_phi, axes = [0, 1])
-        denominator = 2 * np.pi * delta_rho * np.sum(rho * CLV(rho, R_s, u1, u2))
-
-        return sum_over_chords / denominator
-
-    else:
-
-        sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1])
-
-        return sum_over_chords / (np.pi * R_s**2)
 
 
 """.
@@ -159,6 +203,13 @@ M_s = architecture_dict['M_star']
 R_0 = architecture_dict['R_0']
 M_p = architecture_dict['M_p']
 a_p = architecture_dict['a_p']
+T_eff = architecture_dict['T_eff']
+log_g = architecture_dict['log_g']
+Fe_H = architecture_dict['Fe_H']
+alpha_Fe = architecture_dict['alpha_Fe']
+period_starrot = architecture_dict['period_starrot']
+inclination_starrot = architecture_dict['inclination_starrot']
+azimuth_starrot = architecture_dict['azimuth_starrot']
 
 if ExomoonSource:
     R_moon = architecture_dict['R_moon']

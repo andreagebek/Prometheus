@@ -124,12 +124,12 @@ if systemname == '0':
         M_star = read_value('Enter the mass of the host star in solar masses:', 1e-5, 1e10, M_sun)
 
     if RM_effect:
-        T_eff = read_value('Enter the effective temperature of the star in Kelvin:', 2300, 12000, 1)
-        log_g = read_value('Enter the logarithmic value of the surface gravity in log10(cm/s^2):', 0, 6, 1)
-        Fe_H = read_value('Enter the metallicity of the star [Fe/H]:', -4, 1, 1)
+        T_eff = read_value('Enter the effective temperature of the star in Kelvin:', 2300, 12000, 1, round = False, accept_borders = True)
+        log_g = read_value('Enter the logarithmic value of the surface gravity in log10(cm/s^2):', 0, 6, 1, round = False, accept_borders = True)
+        Fe_H = read_value('Enter the metallicity of the star [Fe/H]:', -4, 1, 1, round = False, accept_borders = True)
 
         if Fe_H > -3.5 and Fe_H < 0.25: # The PHOENIX library has varying alpha-enhancement only for this metallicity range
-            alpha_Fe = read_value('Enter the alpha-enhancement of the star [alpha/Fe]:', -0.2, 1.2, 1)
+            alpha_Fe = read_value('Enter the alpha-enhancement of the star [alpha/Fe]:', -0.2, 1.2, 1, round = False, accept_borders = True)
         else:
             alpha_Fe = 0
 
@@ -150,11 +150,16 @@ if mode == 'lightcurve':
     architecture_dict.update({'M_star': M_star, 'a_p': a_p})
 
 if RM_effect:
-    architecture_dict.update({'T_eff': T_eff, 'log_g': log_g, 'Fe_H': Fe_H, 'alpha_Fe': alpha_Fe})
+    period_starrot = read_value('Enter the period of the stellar rotation in days:', 0, 1000, 86400)
+    inclination_starrot = read_value('Enter the inclination of the stellar rotation against the planetary orbital plane in degrees:', 0, 180, np.pi / 180., round = False, accept_borders = True)
+    azimuth_starrot = read_value('Enter the angle between the line of sight from the observer to the system and the angular momentum vector of the stellar rotation, \
+projected onto the orbital plane in degrees', 0, 360, np.pi / 180., round = False, accept_borders = True)
+
+    architecture_dict.update({'T_eff': T_eff, 'log_g': log_g, 'Fe_H': Fe_H, 'alpha_Fe': alpha_Fe, 'period_starrot': period_starrot, 'inclination_starrot': inclination_starrot, 'azimuth_starrot': azimuth_starrot})
 
 if CLV_variations:
-    u1 = read_value('Enter the first (linear) coefficient for limb darkening:', -1, 1, 1)
-    u2 = read_value('Enter the second (quadratic) coefficient for limb darkening:', -1, 1, 1)
+    u1 = read_value('Enter the first (linear) coefficient for limb darkening:', -1, 1, 1, accept_borders = True)
+    u2 = read_value('Enter the second (quadratic) coefficient for limb darkening:', -1, 1, 1, accept_borders = True)
     architecture_dict.update({'u1': u1, 'u2': u2})
 
 

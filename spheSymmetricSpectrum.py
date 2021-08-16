@@ -22,7 +22,7 @@ chord at various impact parameters, then integrate over all possible
 impact parameters to obtain the (wavelength-dependent) transit depth
 """
 
-def optical_depth(z, wavelength):   
+def optical_depth(wavelength, z):   
     """Calculate the optical depth for all absorbers along the chord 
     """
 
@@ -74,7 +74,7 @@ def transit_depth(wavelength):
 
     z = np.linspace(starting_z, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - starting_z) / float(z_steps)
 
-    single_chord = np.exp(-optical_depth(z, wavelength))
+    single_chord = np.exp(-optical_depth(wavelength, z))
         
     delta_z = (R_s - starting_z) / float(z_steps)
 
@@ -194,7 +194,7 @@ if record_tau:
 
     z = np.linspace(starting_z, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - starting_z) / float(z_steps)
 
-    tau = optical_depth(z, w_maxabs)
+    tau = optical_depth(w_maxabs, z)
 
     np.savetxt('../' + paramsFilename + '_tau.txt', np.array([z, tau]).T, header = 'z [cm], tau')        
     

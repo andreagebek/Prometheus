@@ -74,7 +74,7 @@ def get_spectrum(T,logg,Z,a):
     #These are URLS for the input files.
     waveurl = root+'WAVE_PHOENIX-ACES-AGSS-COND-2011.fits'
     specurl = root+'PHOENIX-ACES-AGSS-COND-2011/Z'+z_string+a_string+'/lte'+t_string+g_string+z_string+a_string+'.PHOENIX-ACES-AGSS-COND-2011-HiRes.fits'
-    
+
     #These are the output filenames, they will also be returned so that the wrapper
     #of this function can take them in.
     wavename = 'WAVE.fits'
@@ -143,7 +143,3 @@ def read_spectrum(T,logg,metallicity=0.0,alpha=0.0):
 
     return(w * 1e-8, f) # Conversion to cgs-units. Note that Jens divides f by
     # a seemingly random factor of pi, but this should not bother the transit calculations here. 
-
-
-
-read_spectrum(5000, 4, metallicity = 0.01, alpha = 0.01)
