@@ -199,7 +199,7 @@ species_dict = param['Species']
 
 grids_dict = param['Grids']
 
-wavelength = np.arange(grids_dict['lower_w'], grids_dict['upper_w'], grids_dict['resolution']) * 1e8 # In Angstrom
+wavelength = np.arange(grids_dict['lower_w'], grids_dict['upper_w'], grids_dict['resolution'])
 x_border = grids_dict['x_border']
 x_steps = grids_dict['x_steps']
 z_steps = grids_dict['z_steps']

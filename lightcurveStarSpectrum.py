@@ -13,6 +13,7 @@ from constants import *
 from n_profiles import *
 from sigma_abs import *
 from stellarspectrum import *
+import matplotlib.pyplot as plt
 
 
 
@@ -44,6 +45,7 @@ def F_star(wavelength, phi, rho):
     w_max = np.max(wavelength * Doppler(-v_max))
     w_min = np.min(wavelength * Doppler(v_max))
     SEL_w = np.argwhere((w_star > w_min) * (w_star < w_max))[:, 0]
+
     SEL = np.concatenate((np.array([np.min(SEL_w) - 1]), SEL_w, np.array([np.max(SEL_w) + 1])))
 
     w_star = w_star[SEL]
@@ -227,9 +229,9 @@ species_dict = param['Species']
 
 grids_dict = param['Grids']
 
-wavelength = np.arange(grids_dict['lower_w'], grids_dict['upper_w'], grids_dict['resolution']) * 1e8 # In Angstrom
+wavelength = np.arange(grids_dict['lower_w'], grids_dict['upper_w'], grids_dict['resolution'])
 orbphase_border = grids_dict['orbphase_border']
-orbphase = np.linspace(-orbphase_border, orbphase_border, 1 + int(grids_dict['orbphase_steps']))[:-1] + orbphase_border / float(grids_dict['orbphase_steps'])
+orbphase = np.linspace(-orbphase_border, orbphase_border, int(grids_dict['orbphase_steps']))
 x_border = grids_dict['x_border']
 x_steps = grids_dict['x_steps']
 z_steps = grids_dict['z_steps']
