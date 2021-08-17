@@ -391,31 +391,10 @@ Performance parameters
 
 print('\nAlmost done! Specify the discretization parameters for the wavelength and spatial grids.\n')
 
-if mode == 'spectrum':
 
-    lower_w = read_value('Enter the lower wavelength border in Angstrom:', 1e-3, 1e12, 1e-8)
-    upper_w = read_value('Enter the upper wavelength border in Angstrom:', lower_w * 1e8, 1e12, 1e-8, round = False)
-    resolution = read_value('Enter the resolution of the wavelength grid in Angstrom:', 1e-6, (upper_w - lower_w) * 1e8 / 2., 1e-8, round = False)
-
-elif mode == 'lightcurve':
-
-    wavelength = []
-
-    while True:
-    
-        w_lightcurve = read_value('Enter a discrete wavelength for the calculation of the light curve in Angstrom, or 0 to stop adding wavelengths:', 1e-3, 1e12, 1e-8, break_zero = True)
-
-        if w_lightcurve == 0 and len(wavelength) == 0:
-            print('You have to add at least one wavelength!')
-        
-        elif w_lightcurve == 0:
-            break
-
-        else:
-            wavelength.append(w_lightcurve)        
-
-    orbphase_border = read_value('Enter the orbital phase at which the light curve calculation starts and stops:', 0, 0.5, 2 * np.pi, accept_borders = True)
-    orbphase_steps = read_value('Enter the number of bins for the orbital phase discretization:', 2, 1e4, 1)
+lower_w = read_value('Enter the lower wavelength border in Angstrom:', 1e-3, 1e12, 1e-8)
+upper_w = read_value('Enter the upper wavelength border in Angstrom:', lower_w * 1e8, 1e12, 1e-8, round = False)
+resolution = read_value('Enter the resolution of the wavelength grid in Angstrom:', 1e-6, (upper_w - lower_w) * 1e8 / 2., 1e-8, round = False)
 
 x_border = read_value('Enter the half chord length (x-direction) for the numerical integration along the x-axis in planetary radii:', 0, a_p / R_0, R_0, round = False)
 x_steps = read_value('Enter the number of bins for the spatial discretization along the chord (x-direction):', 2, 1e6, 1)
@@ -423,15 +402,17 @@ x_steps = read_value('Enter the number of bins for the spatial discretization al
 z_steps = read_value('Enter the number of bins for the spatial discretization in z-direction:', 2, 1e6, 1)
 
 
-if mode == 'spectrum':
-    grids_dict = {'lower_w': lower_w, 'upper_w': upper_w, 'resolution': resolution, 'x_border': x_border, 'x_steps': x_steps, 'z_steps': z_steps}
-
-elif mode == 'lightcurve':
-    grids_dict = {'wavelength': wavelength, 'orbphase_border': orbphase_border, 'orbphase_steps': orbphase_steps, 'x_border': x_border, 'x_steps': x_steps, 'z_steps': z_steps}
+grids_dict = {'lower_w': lower_w, 'upper_w': upper_w, 'resolution': resolution, 'x_border': x_border, 'x_steps': x_steps, 'z_steps': z_steps}
 
 if not sphericalSymmetry:
     phi_steps = read_value('Enter the number of bins for the spatial discretization for the polar coordinate (phi-direction):', 2, 1e4, 1)
     grids_dict['phi_steps'] = phi_steps
+
+if mode == 'lightcurve':
+    orbphase_border = read_value('Enter the orbital phase at which the light curve calculation starts and stops:', 0, 0.5, 2 * np.pi, accept_borders = True)
+    orbphase_steps = read_value('Enter the number of bins for the orbital phase discretization:', 2, 1e4, 1)
+
+    grids_dict.update({'orbphase_border': orbphase_border, 'orbphase_steps': orbphase_steps})
 
 """
 Additional output

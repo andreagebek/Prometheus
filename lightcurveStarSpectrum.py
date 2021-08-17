@@ -227,7 +227,7 @@ species_dict = param['Species']
 
 grids_dict = param['Grids']
 
-wavelength = np.array(grids_dict['wavelength'])
+wavelength = np.arange(grids_dict['lower_w'], grids_dict['upper_w'], grids_dict['resolution']) * 1e8 # In Angstrom
 orbphase_border = grids_dict['orbphase_border']
 orbphase = np.linspace(-orbphase_border, orbphase_border, 1 + int(grids_dict['orbphase_steps']))[:-1] + orbphase_border / float(grids_dict['orbphase_steps'])
 x_border = grids_dict['x_border']

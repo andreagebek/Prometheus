@@ -32,8 +32,6 @@ paramsFilename = sys.argv[1]
 with open('../../' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
-lower_w = param['Grids']['lower_w']
-upper_w = param['Grids']['upper_w']
 
 benchmark = param['Output']['benchmark']
 
@@ -67,7 +65,7 @@ ax.set_ylabel(r'$\Re$')
 ax.minorticks_on()
 ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
 
-ax.set_xlim(lower_w * 1e8, upper_w * 1e8)
+ax.set_xlim(np.min(wavelength), np.max(wavelength))
 ax.set_ylim(np.min(transit_depth) - 0.05 * (1 - np.min(transit_depth)), 1 + 0.05 * (1 - np.min(transit_depth)))
 
 plt.tight_layout()

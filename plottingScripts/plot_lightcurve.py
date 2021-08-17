@@ -32,7 +32,9 @@ paramsFilename = sys.argv[1]
 with open('../../' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
-wavelength = np.array(param['Grids']['wavelength']) * 1e8 # In Angstrom
+grids_dict = param['Grids']
+
+wavelength = np.arange(grids_dict['lower_w'], grids_dict['upper_w'], grids_dict['resolution']) * 1e8 # In Angstrom
 
 LightcurveFile = np.loadtxt('../../' + paramsFilename + '_lightcurve.txt')
 
@@ -53,7 +55,7 @@ ax = fig.add_subplot(111)
 cmap = matplotlib.cm.get_cmap('Accent')
 
 for idx, lightcurve in enumerate(lightcurve_list):
-    ax.plot(orbphase, lightcurve, color = cmap(float(idx) / (len(wavelength) - 1.)), linewidth = 2, label = str(wavelength[idx]) + r'$\,\AA$')
+    ax.plot(orbphase, lightcurve, color = cmap(float(idx) / (len(wavelength) - 1.)), linewidth = 2, label = str(np.round(wavelength[idx], 2)) + r'$\,\AA$')
 
 lg = ax.legend(loc = 'center right')
 lg.get_frame().set_alpha(0)
