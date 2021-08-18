@@ -18,13 +18,13 @@ sphericalSymmetry = param['sphericalSymmetry']
 RM_effect = param['RM_effect']
 
 if mode == 'spectrum' and sphericalSymmetry:
-    os.system('python spheSymmetricSpectrum.py ' + paramsFilename)
+    os.system('python pythonScripts/spheSymmetricSpectrum.py ' + paramsFilename)
 
 elif mode == 'spectrum':
-    os.system('python noSymmetrySpectrum.py ' + paramsFilename)
+    os.system('python pythonScripts/noSymmetrySpectrum.py ' + paramsFilename)
 
 elif mode == 'lightcurve' and not RM_effect:
-    os.system('python lightcurve.py ' + paramsFilename)
+    os.system('python pythonScripts/lightcurve.py ' + paramsFilename)
 
 elif mode == 'lightcurve':
-    os.system('python lightcurveStarSpectrum.py ' + paramsFilename)
+    os.system('python pythonScripts/lightcurveStarSpectrum.py ' + paramsFilename)
