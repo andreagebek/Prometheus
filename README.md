@@ -18,5 +18,5 @@ the terminal. This will create the file '/Users/agebek/prometheus/testSimulation
 which contains the resulting spectrum of the calculation.
 3. If you want to make use of the built-in plotting scripts, navigate to the plottingScripts subfolder
 in the git subfolder (here: '/Users/agebek/prometheus/git/plottingScripts'). Run the plotting script
-of your choice, e.g. 'spectrum.py' to plot a transmission spectrum, by typing 'python spectrum.py testSimulation'
+of your choice, e.g. 'plot_spectrum.py' to plot a transmission spectrum, by typing 'python spectrum.py testSimulation'
 in the terminal.

@@ -7,6 +7,7 @@ Created on 2. June 2021 by Andrea Gebek.
 import numpy as np
 import sys
 import json
+sys.path.insert(0, 'pythonScripts') # Import from pythonScripts folder
 from constants import *
 
 
