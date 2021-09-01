@@ -10,6 +10,7 @@ from datetime import datetime
 from constants import *
 from n_profiles import *
 from sigma_abs import *
+from winds import *
 
 
 startTime = datetime.now()
@@ -23,7 +24,16 @@ def CLV(rho, u1, u2):
     arg = 1. - np.sqrt(1. - rho**2 / R_s**2)
     return 1. - u1 * arg - u2 * arg**2
 
+"""
+Doppler shift
+"""
 
+def Doppler(v):
+    # If v is positive, receiver and source are moving towards each other
+    beta = v / c
+    shift = np.sqrt((1. - beta) / (1. + beta))
+
+    return shift
 
 """
 Calculation of the theoretical transit depth in two steps,
@@ -53,10 +63,10 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
 
         elif key_scenario == 'exomoon':
 
-            current_orbphase_moon = orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
+            orbphase_moon = starting_orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
 
-            x_moonFrame = xx - a_moon * np.cos(current_orbphase_moon)
-            y_moonFrame = np.sin(phiphi) * rhorho - yy_pp - a_moon * np.sin(current_orbphase_moon)
+            x_moonFrame = xx - a_moon * np.cos(orbphase_moon)
+            y_moonFrame = np.sin(phiphi) * rhorho - yy_pp - a_moon * np.sin(orbphase_moon)
             z_moonFrame = np.cos(phiphi) * rhorho
 
             r_fromMoon = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
@@ -77,8 +87,8 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
 
         if ExomoonSource: # Correct for chords which are blocked by the exomoon
 
-            current_orbphase_moon = orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
-            y_moon = yy_pp + a_moon * np.sin(current_orbphase_moon)
+            orbphase_moon = starting_orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
+            y_moon = yy_pp + a_moon * np.sin(orbphase_moon)
 
             blockingMoon = ((yy - y_moon)**2 + zz**2 < R_moon**2) 
 
@@ -88,6 +98,11 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
         n = np.where(behindStar, 0, n)
 
         N = delta_x * np.sum(n, axis = 1)
+        N = np.tile(N, (len(wavelength), 1, 1, 1))
+
+        v_los = v_intrinsic(orbphase, key_scenario, phi_steps, z_steps, architecture_dict)
+        w_shift = Doppler(-v_los)
+        wavelength_shifted = np.tensordot(wavelength, w_shift, axes = 0)
 
         sigma = 0
         for key_species in species_dict[key_scenario].keys():
@@ -96,13 +111,14 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
 
             T_abs = species_dict[key_scenario][key_species]['T_abs']
 
-            sigma += absorption_cross_section(wavelength, chi, T_abs, key_species, lines_dict)
+            sigma += absorption_cross_section(wavelength_shifted, chi, T_abs, key_species, lines_dict)
 
         if 'RayleighScatt' in scenario_dict[key_scenario].keys():
             if scenario_dict[key_scenario]['RayleighScatt']:
-                sigma += rayleigh_scattering(wavelength)
+                sigma += rayleigh_scattering(wavelength_shifted)
 
-        tau += np.tensordot(sigma, N, axes = 0)
+
+        tau += np.multiply(sigma, N)
 
     return tau
 
@@ -127,8 +143,8 @@ def transit_depth(wavelength, orbphase):
 
     if CLV_variations:
 
-        sum_over_chords = delta_rho * np.tensordot(rho * CLV(rho, R_s, u1, u2), integral_phi, axes = [0, 1])
-        denominator = 2 * np.pi * delta_rho * np.sum(rho * CLV(rho, R_s, u1, u2))
+        sum_over_chords = delta_rho * np.tensordot(rho * CLV(rho, u1, u2), integral_phi, axes = [0, 1])
+        denominator = 2 * np.pi * delta_rho * np.sum(rho * CLV(rho, u1, u2))
 
         return sum_over_chords / denominator
 
@@ -163,7 +179,7 @@ a_p = architecture_dict['a_p']
 if ExomoonSource:
     R_moon = architecture_dict['R_moon']
     a_moon = architecture_dict['a_moon']
-    orbphase_moon = architecture_dict['orbphase_moon']
+    starting_orbphase_moon = architecture_dict['starting_orbphase_moon']
 
 if CLV_variations:
     u1 = architecture_dict['u1']

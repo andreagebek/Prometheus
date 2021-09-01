@@ -13,7 +13,7 @@ from constants import *
 from n_profiles import *
 from sigma_abs import *
 from stellarspectrum import *
-import matplotlib.pyplot as plt
+from winds import *
 
 
 
@@ -53,7 +53,7 @@ def F_star(wavelength, phi, rho):
 
     dir_omega = np.array([-np.sin(inclination_starrot) * np.cos(azimuth_starrot), -np.sin(inclination_starrot) * np.sin(azimuth_starrot), np.cos(inclination_starrot)])
     omega = 2. * np.pi / period_starrot * dir_omega # Angular velocity vector of the stellar rotation
-    r_surface = np.array([np.tensordot(np.sqrt(R_s**2 - rho**2), np.ones(len(phi)), axes = 0), np.tensordot(rho, np.sin(phi), axes = 0), np.tensordot(rho, np.cos(phi), axes = 0)]) 
+    r_surface = np.array([np.tensordot(np.ones(len(phi)), np.sqrt(R_s**2 - rho**2), axes = 0), np.tensordot(np.sin(phi), rho, axes = 0), np.tensordot(np.cos(phi), rho, axes = 0)])
     # Vector to the surface of the star
     v_los = np.cross(omega, r_surface, axisb = 0)[:, :, 0] # The line-of-sight velocity is the one along the x-axis
     w_shift = Doppler(v_los)
@@ -63,12 +63,12 @@ def F_star(wavelength, phi, rho):
     # at all positions on the stellar surface just read in the spectrum at different wavelengths depending on the position in the spatial grid (phi and rho) 
 
     if CLV_variations:
-        CLV_array = np.repeat(CLV(rho, u1, u2), len(wavelength) * len(phi)).reshape(len(rho), len(wavelength), len(phi))
+        CLV_array = np.tile(CLV(rho, u1, u2), (len(wavelength), int(phi_steps), 1))
         
-        return (F_shifted * CLV_array.swapaxes(0, 1)).swapaxes(1, 2)
+        return (F_shifted * CLV_array)
     
     else:
-        return F_shifted.swapaxes(1, 2)
+        return F_shifted
 
 
 
@@ -100,10 +100,10 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
 
         elif key_scenario == 'exomoon':
 
-            current_orbphase_moon = orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
+            orbphase_moon = starting_orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
 
-            x_moonFrame = xx - a_moon * np.cos(current_orbphase_moon)
-            y_moonFrame = np.sin(phiphi) * rhorho - yy_pp - a_moon * np.sin(current_orbphase_moon)
+            x_moonFrame = xx - a_moon * np.cos(orbphase_moon)
+            y_moonFrame = np.sin(phiphi) * rhorho - yy_pp - a_moon * np.sin(orbphase_moon)
             z_moonFrame = np.cos(phiphi) * rhorho
 
             r_fromMoon = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
@@ -124,8 +124,8 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
 
         if ExomoonSource: # Correct for chords which are blocked by the exomoon
 
-            current_orbphase_moon = orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
-            y_moon = yy_pp + a_moon * np.sin(current_orbphase_moon)
+            orbphase_moon = starting_orbphase_moon + orbphase * np.sqrt((a_p**3 * M_p) / (a_moon**3 * M_s)) # Assuming Keplerian orbits of massless points
+            y_moon = yy_pp + a_moon * np.sin(orbphase_moon)
 
             blockingMoon = ((yy - y_moon)**2 + zz**2 < R_moon**2) 
 
@@ -135,6 +135,11 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
         n = np.where(behindStar, 0, n)
 
         N = delta_x * np.sum(n, axis = 1)
+        N = np.tile(N, (len(wavelength), 1, 1, 1))
+
+        v_los = v_intrinsic(orbphase, key_scenario, phi_steps, z_steps, architecture_dict)
+        w_shift = Doppler(-v_los)
+        wavelength_shifted = np.tensordot(wavelength, w_shift, axes = 0)
 
         sigma = 0
         for key_species in species_dict[key_scenario].keys():
@@ -143,13 +148,13 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
 
             T_abs = species_dict[key_scenario][key_species]['T_abs']
 
-            sigma += absorption_cross_section(wavelength, chi, T_abs, key_species, lines_dict)
+            sigma += absorption_cross_section(wavelength_shifted, chi, T_abs, key_species, lines_dict)
 
         if 'RayleighScatt' in scenario_dict[key_scenario].keys():
             if scenario_dict[key_scenario]['RayleighScatt']:
-                sigma += rayleigh_scattering(wavelength)
+                sigma += rayleigh_scattering(wavelength_shifted)
 
-        tau += np.tensordot(sigma, N, axes = 0)
+        tau += np.multiply(sigma, N)
 
     return tau
 
@@ -216,7 +221,7 @@ azimuth_starrot = architecture_dict['azimuth_starrot']
 if ExomoonSource:
     R_moon = architecture_dict['R_moon']
     a_moon = architecture_dict['a_moon']
-    orbphase_moon = architecture_dict['orbphase_moon']
+    starting_orbphase_moon = architecture_dict['starting_orbphase_moon']
 
 if CLV_variations:
     u1 = architecture_dict['u1']

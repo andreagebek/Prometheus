@@ -2,7 +2,7 @@
 This file stores number density profiles.
 Created on 15. July 2021 by Andrea Gebek.
 """
-import json
+
 from constants import *
 from scipy.special import erf
 

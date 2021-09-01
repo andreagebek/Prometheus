@@ -284,10 +284,10 @@ if ExomoonOffCenter:
     R_moon = scenario_dict['exomoon']['R_moon']
 
     a_moon = read_value('Enter the orbital distance between the exomoon and the planet in planetary radii (measured from the centers of the bodies):', 1, a_p / R_0, R_0, round = False)
-    orbphase_moon = read_value('Enter the orbital phase of the moon when the planet is transiting. A moon orbital phase of 0 corresponds to the moon sitting \
+    starting_orbphase_moon = read_value('Enter the orbital phase of the moon when the planet is transiting. A moon orbital phase of 0 corresponds to the moon sitting \
 between the planet and the observer, 0.25 means that the exomoon is located to the right of the planet when viewed from the observer.', -0.5, 0.5, 2. * np.pi, accept_borders = True)
 
-    architecture_dict.update({'R_moon': R_moon, 'a_moon': a_moon, 'orbphase_moon': orbphase_moon})
+    architecture_dict.update({'R_moon': R_moon, 'a_moon': a_moon, 'starting_orbphase_moon': starting_orbphase_moon})
 
     if mode == 'spectrum':
         z_moon = read_value('Enter the elevation (z-coordinate) of the exomoon with respect to the planet orbital plane in planetary radii:', 0, a_moon / R_0, R_0, 
