@@ -44,14 +44,18 @@ impact parameters to obtain the (wavelength-dependent) transit depth
 
 
 
-def optical_depth(wavelength, phi, rho, x_p, y_p):
+def optical_depth(wavelength, phi, rho, orbphase):
 
-    x = np.linspace(-x_border, x_border, int(x_steps) + 1, dtype = np.dtype('f4'))[:-1] + x_border / float(x_steps)
+    x_p = a_p * np.cos(orbphase)
+    y_p = a_p * np.sin(orbphase)
+
+    x = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
     delta_x = 2 * x_border / float(x_steps)
-    xx, phiphi, rhorho, yy_pp = np.meshgrid(x, phi, rho, y_p)
+    gridgrid = np.meshgrid(x.astype('f4'), phi.astype('f4'), rho.astype('f4'), y_p.astype('f4'), indexing = 'ij')
+    xx, phiphi, rhorho, yy_pp = gridgrid
 
     r_fromP = np.sqrt(xx**2 + (rhorho * np.sin(phiphi) - yy_pp)**2 + (rhorho * np.cos(phiphi))**2)
-    
+
     tau = 0
     for key_scenario in species_dict.keys():
 
@@ -59,7 +63,7 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
 
         if key_scenario == 'barometric' or key_scenario == 'hydrostatic' or key_scenario == 'escaping':
         
-            n = number_density(r_fromP, scenario_dict[key_scenario])
+            n = number_density(r_fromP, scenario_dict[key_scenario])    # n(x, phi, rho, t)
 
         elif key_scenario == 'exomoon':
 
@@ -96,13 +100,15 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
         
         behindStar = (xx + x_p < 0)
         n = np.where(behindStar, 0, n)
+ 
+        if DopplerPlanetRotation or DopplerOrbitalMotion: # or winds
 
-        N = delta_x * np.sum(n, axis = 1)
-        N = np.tile(N, (len(wavelength), 1, 1, 1))
-
-        v_los = v_intrinsic(orbphase, key_scenario, phi_steps, z_steps, architecture_dict)
-        w_shift = Doppler(-v_los)
-        wavelength_shifted = np.tensordot(wavelength, w_shift, axes = 0)
+            v_los = (v_total(orbphase, key_scenario, x_steps, phi_steps, z_steps, architecture_dict, DopplerOrbitalMotion, DopplerPlanetRotation, sigma_dim, gridgrid)).astype('f4')
+            w_shift = Doppler(-v_los)
+            wavelength_shifted = np.tensordot(wavelength.astype('f4'), w_shift.astype('f4'), axes = 0)
+        
+        else:
+            wavelength_shifted = wavelength
 
         sigma = 0
         for key_species in species_dict[key_scenario].keys():
@@ -117,23 +123,40 @@ def optical_depth(wavelength, phi, rho, x_p, y_p):
             if scenario_dict[key_scenario]['RayleighScatt']:
                 sigma += rayleigh_scattering(wavelength_shifted)
 
+        # Calculate the optical depth in various ways from the number density and sigma
 
-        tau += np.multiply(sigma, N)
+        if sigma_dim < 3:
 
-    return tau
+            N = delta_x * np.sum(n, axis = 0) # N(phi, rho, t)
+
+            if sigma_dim == 1: # sigma(lambda)
+
+                tau += np.tensordot(sigma, N, axes = 0)
+
+            else: # sigma(lambda, t)
+
+                N = np.tile(N, (len(wavelength), 1, 1, 1))
+                sigma = np.tile(sigma, (int(phi_steps), int(z_steps), 1, 1)).swapaxes(0, 2).swapaxes(1, 2)
+                
+                tau += np.multiply(sigma, N)
+
+        else: # sigma(lambda, x, phi, rho, t)
+            
+            n = np.tile(n, (len(wavelength), 1, 1, 1, 1))
+
+            tau += delta_x * np.sum(np.multiply(sigma, n), axis = 1)
+
+    return tau # tau(lambda, phi, rho, t)
 
 
 def transit_depth(wavelength, orbphase):
     """Calculate the wavelength-dependent transit depth
     """
 
-    phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1, dtype = np.dtype('f4'))[:-1] + np.pi / float(phi_steps)
-    rho = np.linspace(0, R_s, int(z_steps) + 1, dtype = np.dtype('f4'))[:-1] + 0.5 * R_s / float(z_steps)
-
-    x_p = a_p * np.cos(orbphase)
-    y_p = np.array(a_p * np.sin(orbphase), dtype = np.dtype('f4'))
+    phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
+    rho = np.linspace(0, R_s, int(z_steps) + 1)[:-1] + 0.5 * R_s / float(z_steps)
     
-    single_chord = np.exp(-optical_depth(wavelength, phi, rho, x_p, y_p))
+    single_chord = np.exp(-optical_depth(wavelength, phi, rho, orbphase))
 
     delta_rho = R_s / float(z_steps)
     delta_phi = 2 * np.pi / float(phi_steps)
@@ -166,6 +189,9 @@ with open('../' + paramsFilename + '.txt') as file:
 
 ExomoonSource = param['ExomoonSource']
 CLV_variations = param['CLV_variations']
+DopplerOrbitalMotion = param['DopplerOrbitalMotion']
+DopplerPlanetRotation = param['DopplerPlanetRotation']
+sigma_dim = param['sigma_dim']
 
 
 architecture_dict = param['Architecture']

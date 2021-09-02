@@ -90,6 +90,9 @@ ExomoonOffCenter = False
 sphericalSymmetry = True
 CLV_variations = False
 RM_effect = False
+DopplerOrbitalMotion = False
+DopplerPlanetRotation = False
+sigma_dim = 1
 
 
 
@@ -106,6 +109,10 @@ if mode == 'lightcurve':
     CLV_variations = read_str('Do you want to take center-to-limb variations into account?', ['yes', 'no'])
     RM_effect = read_str('Do you want to take cthe Rossiter-McLaughlin-Effect into account (note that this means that you \
 have to provide additional information about the host star to specifiy its spectrum)?', ['yes', 'no'])
+    DopplerOrbitalMotion = read_str('Do you want to consider the Doppler shifts due to planetary/exomoon orbital motion?', ['yes', 'no'])
+
+    if DopplerOrbitalMotion:
+        sigma_dim = 2
 
 system_list = []
 for key, value in planets_dict.items():
@@ -309,7 +316,20 @@ if len(scenario_dict) == 0:
     print('You have not added any absorption sources! Your loss. PROMETHEUS exits now.')
     sys.exit()
 
+"""
+Specify if and what kind of winds to model
+"""
 
+if mode == 'lightcurve':
+
+    if PlanetarySource:
+        DopplerPlanetRotation = read_str('Do you want to consider the Doppler shifts due to planetary rotation?', ['yes', 'no'])
+
+        if DopplerPlanetRotation:
+
+            period_planetrot = read_value('Enter the period for the planetary rotation in days:', 0, 1000, 86400)
+            architecture_dict['period_planetrot'] = period_planetrot
+            sigma_dim = 5
 
 """
 Specify the absorption lines and species-related parameters.
@@ -447,7 +467,8 @@ Write parameter dictionary and store it as json file
 print('All parameters are stored! To run PROMETHEUS, type <python main.py filename> and replace <filename> with the name you specified for the parameter txt file.')
 
 parameters = {'Architecture': architecture_dict, 'Scenarios': scenario_dict, 'Lines': lines_dict, 'Species': species_dict, 'Grids': grids_dict, 'Output': output_dict,
-'sphericalSymmetry': sphericalSymmetry, 'ExomoonSource': ExomoonSource, 'CLV_variations': CLV_variations, 'RM_effect': RM_effect, 'mode': mode}
+'sphericalSymmetry': sphericalSymmetry, 'ExomoonSource': ExomoonSource, 'CLV_variations': CLV_variations, 'RM_effect': RM_effect, 
+'DopplerOrbitalMotion': DopplerOrbitalMotion, 'DopplerPlanetRotation': DopplerPlanetRotation, 'sigma_dim': sigma_dim, 'mode': mode}
 
 
 with open('../' + paramsFilename + '.txt', 'w') as outfile:
