@@ -51,7 +51,7 @@ def optical_depth(wavelength, phi, rho):
 
     x = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
     delta_x = 2 * x_border / float(x_steps)
-    xx, phiphi, rhorho = np.meshgrid(x, phi, rho)
+    xx, phiphi, rhorho = np.meshgrid(x, phi, rho, indexing = 'ij')
 
     tau = 0
     for key_scenario in species_dict.keys():
@@ -91,7 +91,7 @@ def optical_depth(wavelength, phi, rho):
             
             n = np.where(blockingMoon, 0, n)
 
-        N = delta_x * np.sum(n, axis = 1)
+        N = delta_x * np.sum(n, axis = 0)
 
         sigma = 0
         for key_species in species_dict[key_scenario].keys():

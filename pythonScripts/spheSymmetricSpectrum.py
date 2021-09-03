@@ -26,11 +26,11 @@ def optical_depth(wavelength, z):
     """Calculate the optical depth for all absorbers along the chord 
     """
 
-    x = np.linspace(x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
+    x = np.linspace(0, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
 
-    delta_x = 2 * x_border / float(x_steps)
+    delta_x = x_border / float(x_steps) 
 
-    xx, zz = np.meshgrid(x, z)
+    xx, zz = np.meshgrid(x, z, indexing = 'ij')
 
     r = np.sqrt(xx**2 + zz**2)
 
@@ -40,7 +40,7 @@ def optical_depth(wavelength, z):
         number_density = number_density_dict[key_scenario]
         n = number_density(r, scenario_dict[key_scenario])
 
-        N = delta_x * np.sum(n, axis = 1)
+        N = 2 * delta_x * np.sum(n, axis = 0) # Exploit symmetry (factor 2)
 
         sigma = 0
         for key_species in species_dict[key_scenario].keys():
@@ -123,8 +123,6 @@ with open('../' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
 ExomoonSource = param['ExomoonSource']
-
-
 
 architecture_dict = param['Architecture']
 

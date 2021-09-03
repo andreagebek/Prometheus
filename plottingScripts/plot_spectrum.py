@@ -39,7 +39,7 @@ SpectrumFile = np.loadtxt('../../' + paramsFilename + '_spectrum.txt')
 
 wavelength = SpectrumFile[:, 0] * 1e8 # In Angstrom
 transit_depth = SpectrumFile[:, 1] + (1 - np.max(SpectrumFile[:, 1]))
-
+print((1 - np.max(SpectrumFile[:, 1]))*100)
 """
 Plot the spectrum and store the figure
 """
@@ -56,8 +56,8 @@ if benchmark:
     ax.plot(wavelength, transit_depth_benchmark, color = 'red', linewidth = 1, label = 'Benchmark')
 
 
-lg = ax.legend(loc = 'lower center')
-lg.get_frame().set_linewidth(0)
+    lg = ax.legend(loc = 'lower center')
+    lg.get_frame().set_linewidth(0)
 
 ax.set_xlabel(r'$\lambda\,[\AA]$')
 ax.set_ylabel(r'$\Re$')
