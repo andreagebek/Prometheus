@@ -10,6 +10,7 @@ from datetime import datetime
 from constants import *
 from n_profiles import *
 from sigma_abs import *
+from windsSpectrum import *
 
 startTime = datetime.now()
 
@@ -38,6 +39,17 @@ def A_intersect(r1, r2, d):
 
 
 """
+Doppler shift
+"""
+
+def Doppler(v):
+    # If v is positive, receiver and source are moving towards each other
+    beta = v / c
+    shift = np.sqrt((1. - beta) / (1. + beta))
+
+    return shift
+
+"""
 Calculation of the theoretical transit depth in two steps,
 first calculating the (wavelength-dependent) optical depth along the 
 chord at various impact parameters, then integrate over all possible 
@@ -51,7 +63,8 @@ def optical_depth(wavelength, phi, rho):
 
     x = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
     delta_x = 2 * x_border / float(x_steps)
-    xx, phiphi, rhorho = np.meshgrid(x, phi, rho, indexing = 'ij')
+    gridgrid = np.meshgrid(x, phi, rho, indexing = 'ij')
+    xx, phiphi, rhorho = gridgrid
 
     tau = 0
     for key_scenario in species_dict.keys():
@@ -65,8 +78,8 @@ def optical_depth(wavelength, phi, rho):
             n = number_density(r, scenario_dict[key_scenario])
 
         elif key_scenario == 'exomoon':
-            x_moonFrame = xx - np.sqrt(a_moon**2 - z_moon**2) * np.cos(orbphase_moon)
-            y_moonFrame = np.sin(phiphi) * rhorho - np.sqrt(a_moon**2 - z_moon**2) * np.sin(orbphase_moon)
+            x_moonFrame = xx - np.sqrt(a_moon**2 - z_moon**2) * np.cos(starting_orbphase_moon)
+            y_moonFrame = np.sin(phiphi) * rhorho - np.sqrt(a_moon**2 - z_moon**2) * np.sin(starting_orbphase_moon)
             z_moonFrame = np.cos(phiphi) * rhorho - z_moon
 
             r = np.sqrt(x_moonFrame**2 + y_moonFrame**2 + z_moonFrame**2)
@@ -83,7 +96,7 @@ def optical_depth(wavelength, phi, rho):
 
         if ExomoonSource: # Correct for chords which are blocked by the off-center exomoon 
 
-            y_moon = np.sqrt(a_moon**2 - z_moon**2) * np.sin(orbphase_moon)
+            y_moon = np.sqrt(a_moon**2 - z_moon**2) * np.sin(starting_orbphase_moon)
             yy = np.sin(phiphi) * rhorho
             zz = np.cos(phiphi) * rhorho
 
@@ -91,7 +104,14 @@ def optical_depth(wavelength, phi, rho):
             
             n = np.where(blockingMoon, 0, n)
 
-        N = delta_x * np.sum(n, axis = 0)
+        if DopplerPlanetRotation or RadialWinds:
+
+            v_los = v_total(key_scenario, x_steps, z_steps, architecture_dict, scenario_dict, DopplerPlanetRotation, sigma_dim, gridgrid, sphericalSymmetry = False, phi_steps = phi_steps)
+            w_shift = Doppler(-v_los)
+            wavelength_shifted = np.tensordot(wavelength, w_shift, axes = 0)
+        
+        else:
+            wavelength_shifted = wavelength  
 
         sigma = 0
         for key_species in species_dict[key_scenario].keys():
@@ -100,13 +120,29 @@ def optical_depth(wavelength, phi, rho):
 
             T_abs = species_dict[key_scenario][key_species]['T_abs']
 
-            sigma += absorption_cross_section(wavelength, chi, T_abs, key_species, lines_dict)
+            sigma += absorption_cross_section(wavelength_shifted, chi, T_abs, key_species, lines_dict)
 
         if 'RayleighScatt' in scenario_dict[key_scenario].keys():
             if scenario_dict[key_scenario]['RayleighScatt']:
-                sigma += rayleigh_scattering(wavelength)
+                sigma += rayleigh_scattering(wavelength_shifted)
 
-        tau += np.tensordot(sigma, N, axes = 0)
+        if sigma_dim == 1:  # sigma(lambda)
+
+            N = delta_x * np.sum(n, axis = 0)
+            tau += np.tensordot(sigma, N, axes = 0)
+
+        elif sigma_dim == 3:    # sigma(lambda, x, rho)
+
+            n = np.tile(n, (len(wavelength), 1, 1, 1))
+            sigma = np.tile(sigma, (int(phi_steps), 1, 1, 1)).swapaxes(0, 2).swapaxes(0, 1)
+
+            tau += delta_x * np.sum(np.multiply(sigma, n), axis = 1)
+
+        else:   # sigma(lambda, x, phi, rho)
+        
+            n = np.tile(n, (len(wavelength), 1, 1, 1))
+
+            tau += delta_x * np.sum(np.multiply(sigma, n), axis = 1)
 
     return tau
 
@@ -131,7 +167,7 @@ def transit_depth(wavelength):
     sum_over_chords = delta_rho * np.tensordot(rho, integral_phi, axes = [0, 1])
 
     if ExomoonSource:
-        y_moon = np.sqrt(a_moon**2 - z_moon**2) * np.sin(orbphase_moon)
+        y_moon = np.sqrt(a_moon**2 - z_moon**2) * np.sin(starting_orbphase_moon)
         A_occ_moon = np.pi * R_moon**2 - A_intersect(R_moon, R_0, np.sqrt(y_moon**2 + z_moon**2)) # This is the area of the moon which is not blocked by the exoplanet
         sum_over_chords -= A_occ_moon
 
@@ -177,7 +213,9 @@ with open('../' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
 ExomoonSource = param['ExomoonSource']
-
+DopplerPlanetRotation = param['DopplerPlanetRotation']
+RadialWinds = param['RadialWinds']
+sigma_dim = param['sigma_dim']
 
 
 architecture_dict = param['Architecture']
@@ -189,7 +227,7 @@ M_p = architecture_dict['M_p']
 if ExomoonSource:
     R_moon = architecture_dict['R_moon']
     a_moon = architecture_dict['a_moon']
-    orbphase_moon = architecture_dict['orbphase_moon']
+    starting_orbphase_moon = architecture_dict['starting_orbphase_moon']
     z_moon = architecture_dict['z_moon']
 
 
@@ -243,7 +281,6 @@ if benchmark:
 
 if record_tau:
     idx_maxabs = np.argmin(spectrum)
-    w_maxabs = wavelength[idx_maxabs]
 
     phi = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
     rho = np.linspace(R_0, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - R_0) / float(z_steps)
@@ -253,7 +290,7 @@ if record_tau:
     phiphi = phiphi.reshape(int(phi_steps * z_steps))
     rhorho = rhorho.reshape(int(phi_steps * z_steps))
 
-    tau = optical_depth(w_maxabs, phi, rho).reshape(int(phi_steps * z_steps))
+    tau = optical_depth(wavelength, phi, rho)[idx_maxabs, :, :].reshape(int(phi_steps * z_steps))
 
     np.savetxt('../' + paramsFilename + '_tau.txt', np.array([phiphi, rhorho, tau]).T, header = 'phi grid [rad], rho grid [cm], tau')   
     

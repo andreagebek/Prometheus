@@ -10,9 +10,22 @@ from datetime import datetime
 from constants import *
 from n_profiles import *
 from sigma_abs import *
+from windsSpectrum import *
 
 
 startTime = datetime.now()
+
+"""
+Doppler shift
+"""
+
+def Doppler(v):
+    # If v is positive, receiver and source are moving towards each other
+    beta = v / c
+    shift = np.sqrt((1. - beta) / (1. + beta))
+
+    return shift
+
 
 
 """
@@ -26,11 +39,12 @@ def optical_depth(wavelength, z):
     """Calculate the optical depth for all absorbers along the chord 
     """
 
-    x = np.linspace(0, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
+    x = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
 
-    delta_x = x_border / float(x_steps) 
+    delta_x = 2. * x_border / float(x_steps) 
 
-    xx, zz = np.meshgrid(x, z, indexing = 'ij')
+    gridgrid = np.meshgrid(x, z, indexing = 'ij')
+    xx, zz = gridgrid
 
     r = np.sqrt(xx**2 + zz**2)
 
@@ -40,7 +54,14 @@ def optical_depth(wavelength, z):
         number_density = number_density_dict[key_scenario]
         n = number_density(r, scenario_dict[key_scenario])
 
-        N = 2 * delta_x * np.sum(n, axis = 0) # Exploit symmetry (factor 2)
+        if DopplerPlanetRotation or RadialWinds:
+
+            v_los = v_total(key_scenario, x_steps, z_steps, architecture_dict, scenario_dict, DopplerPlanetRotation, sigma_dim, gridgrid)
+            w_shift = Doppler(-v_los)
+            wavelength_shifted = np.tensordot(wavelength, w_shift, axes = 0)
+        
+        else:
+            wavelength_shifted = wavelength       
 
         sigma = 0
         for key_species in species_dict[key_scenario].keys():
@@ -49,14 +70,23 @@ def optical_depth(wavelength, z):
 
             T_abs = species_dict[key_scenario][key_species]['T_abs']
 
-            sigma += absorption_cross_section(wavelength, chi, T_abs, key_species, lines_dict)
+            sigma += absorption_cross_section(wavelength_shifted, chi, T_abs, key_species, lines_dict)
 
         
         if 'RayleighScatt' in scenario_dict[key_scenario].keys():
             if scenario_dict[key_scenario]['RayleighScatt']:
-                sigma += rayleigh_scattering(wavelength)
+                sigma += rayleigh_scattering(wavelength_shifted)
 
-        tau += np.tensordot(sigma, N, axes = 0)
+        if sigma_dim == 1:  # sigma(lambda)
+
+            N = delta_x * np.sum(n, axis = 0)
+            tau += np.tensordot(sigma, N, axes = 0)
+
+        elif sigma_dim == 3:    # sigma(lambda, x, rho)
+
+            n = np.tile(n, (len(wavelength), 1, 1))
+
+            tau += delta_x * np.sum(np.multiply(sigma, n), axis = 1)
     
     return tau
 
@@ -123,6 +153,9 @@ with open('../' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
 ExomoonSource = param['ExomoonSource']
+DopplerPlanetRotation = param['DopplerPlanetRotation']
+RadialWinds = param['RadialWinds']
+sigma_dim = param['sigma_dim']
 
 architecture_dict = param['Architecture']
 
@@ -182,7 +215,6 @@ if benchmark:
 
 if record_tau:
     idx_maxabs = np.argmin(spectrum)
-    w_maxabs = wavelength[idx_maxabs]
 
     if ExomoonSource:
         starting_z = R_moon
@@ -192,7 +224,7 @@ if record_tau:
 
     z = np.linspace(starting_z, R_s, int(z_steps) + 1)[:-1] + 0.5 * (R_s - starting_z) / float(z_steps)
 
-    tau = optical_depth(w_maxabs, z)
+    tau = optical_depth(wavelength, z)[idx_maxabs, :]
 
     np.savetxt('../' + paramsFilename + '_tau.txt', np.array([z, tau]).T, header = 'z [cm], tau')        
     

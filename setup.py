@@ -92,7 +92,7 @@ CLV_variations = False
 RM_effect = False
 DopplerOrbitalMotion = False
 DopplerPlanetRotation = False
-sigma_dim = 1
+RadialWinds = False
 
 
 
@@ -107,12 +107,10 @@ if mode == 'lightcurve':
     sphericalSymmetry = False
 
     CLV_variations = read_str('Do you want to take center-to-limb variations into account?', ['yes', 'no'])
-    RM_effect = read_str('Do you want to take cthe Rossiter-McLaughlin-Effect into account (note that this means that you \
+    RM_effect = read_str('Do you want to take the Rossiter-McLaughlin-Effect into account (note that this means that you \
 have to provide additional information about the host star to specifiy its spectrum)?', ['yes', 'no'])
     DopplerOrbitalMotion = read_str('Do you want to consider the Doppler shifts due to planetary/exomoon orbital motion?', ['yes', 'no'])
 
-    if DopplerOrbitalMotion:
-        sigma_dim = 2
 
 system_list = []
 for key, value in planets_dict.items():
@@ -173,7 +171,6 @@ if CLV_variations:
 
 #direction = read_str('Do you want to perform forward or inverse modelling?', ['forward'])
 
-#WINDS
 
 #dishoom_import = read_str('Do you want to import parameters from DISHOOM?', ['no'])
 
@@ -202,8 +199,6 @@ while True:
         mu = read_value('Enter the mean molecular weight of the atmosphere in atomic mass units:', 0.05, 500, amu)
         #press_broad_ON = read_str('Do you want to add pressure broadening in this scenario?', ['no']) NOT HERE!
         RayleighScatt = read_str('Do you want to add Rayleigh scattering in this scenario?', ['yes', 'no'])
-            
-        #winds_ON = read_str('Do you want to add winds in this scenario?', ['no'])
 
         params = {'T': T, 'P_0': P_0, 'mu': mu, 'M_p': M_p, 'R_0': R_0, 'RayleighScatt': RayleighScatt}
 
@@ -222,14 +217,24 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number'])
 
         if norm_esc == 'pressure':
 
-            T = read_value('Enter the temperature of the escaping wind in Kelvin:', 1, 1e6, 1)
             P_0 = read_value('Enter the pressure at the base of the wind in bar:', 1e-15, 1e3, 1e6)
+            T = read_value('Enter the temperature of the escaping wind in Kelvin:', 1, 1e6, 1)
 
-            params = {'q_esc': q_esc, 'T': T, 'P_0': P_0, 'R_0': R_0}
+
+            params = {'q_esc': q_esc, 'P_0': P_0, 'T': T, 'R_0': R_0}
         
         else:
 
             params = {'q_esc': q_esc, 'R_0': R_0}
+
+        RadialWind = read_str('Do you want to add radially escaping winds in the escaping scenario?', ['yes', 'no'])
+        params['RadialWind'] = RadialWind
+
+        if RadialWind:
+
+            vRadial_0 = read_value('Enter the velocity of the radially escaping wind at the reference radius in km/s:', 1e-3, 1e3, 1e5)
+            params['vRadial_0'] = vRadial_0
+            RadialWinds = True
 
         PlanetarySource = True
 
@@ -237,9 +242,18 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number'])
 
         R_moon = read_value('Enter the radius of the moon in Io radii:', 1e-3, 1e3, R_Io)
 
-        params = {'R_moon': R_moon}
-    
+        RadialWind = read_str('Do you want to add radially escaping winds in the escaping scenario?', ['yes', 'no'])
+
+        params = {'R_moon': R_moon, 'RadialWind': RadialWind}
+
+        if RadialWind:
+
+            vRadial_0 = read_value('Enter the velocity of the radially escaping wind at the exomoon radius in km/s:', 1e-3, 1e3, 1e5)   
+            params['vRadial_0'] = vRadial_0
+            RadialWinds = True
+
         ExomoonSource = True
+
 
     elif scenario_name == 'torus':
 
@@ -275,6 +289,8 @@ system architecture parameters for the exomoon.
 
 
 if ExomoonSource:
+
+    architecture_dict['R_moon'] = R_moon
 
     if not PlanetarySource and sphericalSymmetry:
         
@@ -317,19 +333,38 @@ if len(scenario_dict) == 0:
     sys.exit()
 
 """
-Specify if and what kind of winds to model
+If there is a planetary source, specifiy if planetary rotation is taken into account.
 """
 
+if PlanetarySource:
+
+    DopplerPlanetRotation = read_str('Do you want to consider the Doppler shifts due to planetary rotation? This only applies to planetary sources \
+(barometric, hydrostatic, escaping).', ['yes', 'no'])
+
+    if DopplerPlanetRotation:
+
+        period_planetrot = read_value('Enter the period for the planetary rotation in days:', 0, 1000, 86400)
+        architecture_dict['period_planetrot'] = period_planetrot
+
+        sphericalSymmetry = False
+
+# Now, calculate the dimension required for the absorption cross section with all the available information
+
 if mode == 'lightcurve':
+    if DopplerPlanetRotation or RadialWinds:
+        sigma_dim = 5   # sigma(lambda, x, phi, rho, t)
+    elif DopplerOrbitalMotion:
+        sigma_dim = 2   # sigma(lambda, t)
+    else:
+        sigma_dim = 1   # sigma(lambda)
 
-    if PlanetarySource:
-        DopplerPlanetRotation = read_str('Do you want to consider the Doppler shifts due to planetary rotation?', ['yes', 'no'])
-
-        if DopplerPlanetRotation:
-
-            period_planetrot = read_value('Enter the period for the planetary rotation in days:', 0, 1000, 86400)
-            architecture_dict['period_planetrot'] = period_planetrot
-            sigma_dim = 5
+else:
+    if (RadialWinds and ExomoonOffCenter) or DopplerPlanetRotation:
+        sigma_dim = 4   # sigma(lambda, x, phi, rho)
+    elif RadialWinds:
+        sigma_dim = 3   # sigma(lambda, x, rho)
+    else:
+        sigma_dim = 1   # sigma(lambda)
 
 """
 Specify the absorption lines and species-related parameters.
@@ -464,11 +499,11 @@ output_dict['record_tau'] = record_tau
 Write parameter dictionary and store it as json file
 """
 
-print('All parameters are stored! To run PROMETHEUS, type <python main.py filename> and replace <filename> with the name you specified for the parameter txt file.')
+print('\n\nAll parameters are stored! To run PROMETHEUS, type <python main.py ' + paramsFilename + '>.\n')
 
 parameters = {'Architecture': architecture_dict, 'Scenarios': scenario_dict, 'Lines': lines_dict, 'Species': species_dict, 'Grids': grids_dict, 'Output': output_dict,
 'sphericalSymmetry': sphericalSymmetry, 'ExomoonSource': ExomoonSource, 'CLV_variations': CLV_variations, 'RM_effect': RM_effect, 
-'DopplerOrbitalMotion': DopplerOrbitalMotion, 'DopplerPlanetRotation': DopplerPlanetRotation, 'sigma_dim': sigma_dim, 'mode': mode}
+'DopplerOrbitalMotion': DopplerOrbitalMotion, 'DopplerPlanetRotation': DopplerPlanetRotation, 'RadialWinds': RadialWinds, 'sigma_dim': sigma_dim, 'mode': mode}
 
 
 with open('../' + paramsFilename + '.txt', 'w') as outfile:

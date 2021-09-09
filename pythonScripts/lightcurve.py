@@ -10,7 +10,7 @@ from datetime import datetime
 from constants import *
 from n_profiles import *
 from sigma_abs import *
-from winds import *
+from windsLightcurve import *
 
 
 startTime = datetime.now()
@@ -101,9 +101,9 @@ def optical_depth(wavelength, phi, rho, orbphase):
         behindStar = (xx + x_p < 0)
         n = np.where(behindStar, 0, n)
  
-        if DopplerPlanetRotation or DopplerOrbitalMotion: # or winds
+        if DopplerPlanetRotation or DopplerOrbitalMotion or RadialWinds:
 
-            v_los = (v_total(orbphase, key_scenario, x_steps, phi_steps, z_steps, architecture_dict, DopplerOrbitalMotion, DopplerPlanetRotation, sigma_dim, gridgrid)).astype('f4')
+            v_los = (v_total(orbphase, key_scenario, x_steps, phi_steps, z_steps, architecture_dict, scenario_dict, DopplerOrbitalMotion, DopplerPlanetRotation, sigma_dim, gridgrid)).astype('f4')
             w_shift = Doppler(-v_los)
             wavelength_shifted = np.tensordot(wavelength.astype('f4'), w_shift.astype('f4'), axes = 0)
         
@@ -191,6 +191,7 @@ ExomoonSource = param['ExomoonSource']
 CLV_variations = param['CLV_variations']
 DopplerOrbitalMotion = param['DopplerOrbitalMotion']
 DopplerPlanetRotation = param['DopplerPlanetRotation']
+RadialWinds = param['RadialWinds']
 sigma_dim = param['sigma_dim']
 
 

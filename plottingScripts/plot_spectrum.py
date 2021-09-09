@@ -39,7 +39,7 @@ SpectrumFile = np.loadtxt('../../' + paramsFilename + '_spectrum.txt')
 
 wavelength = SpectrumFile[:, 0] * 1e8 # In Angstrom
 transit_depth = SpectrumFile[:, 1] + (1 - np.max(SpectrumFile[:, 1]))
-print((1 - np.max(SpectrumFile[:, 1]))*100)
+
 """
 Plot the spectrum and store the figure
 """

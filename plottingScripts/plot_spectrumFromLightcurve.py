@@ -51,7 +51,7 @@ orbphase = LightcurveFile[:, 0]  # Not in rad, ranges from -0.5 to 0.5
 
 orbphaseFullIngress = np.arcsin((R_s - R_0) / a_p) / (2. * np.pi) # Orbital phase at which the planet's R_0 is fully within the stellar disk
 
-SEL = np.abs(orbphase <= orbphaseFullIngress)
+SEL = np.abs(orbphase) <= orbphaseFullIngress
 
 transit_depth = []
 for idx in range(len(wavelength)):
