@@ -46,6 +46,8 @@ def v_exomoon(ArchitectureDict, ExomoonDict, gridgrid, sigma_dim, sphericalSymme
 
     if sigma_dim == 4:
 
+        xx, phiphi, rhorho = gridgrid
+
         a_moon = ArchitectureDict['a_moon']
         z_moon = ArchitectureDict['z_moon']
         starting_orbphase_moon = ArchitectureDict['starting_orbphase_moon']

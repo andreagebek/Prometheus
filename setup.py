@@ -124,9 +124,9 @@ if systemname == '0':
     R_star = read_value('Enter the radius of the host star in solar radii:', 1e-5, 1e5, R_sun)
     R_0 = read_value('Enter the radius of the exoplanet in Jupiter radii:', 1e-5, 1e5, R_J)
     M_p = read_value('Enter the mass of the exoplanet in Jupiter masses:', 1e-5, 1e3, M_J)
+    a_p = read_value('Enter the orbital distance between planet and star in AU:', 1e-5, 1e3, AU)
 
     if mode == 'lightcurve':
-        a_p = read_value('Enter the orbital distance between planet and star in AU:', 1e-5, 1e3, AU)
         M_star = read_value('Enter the mass of the host star in solar masses:', 1e-5, 1e10, M_sun)
 
     if RM_effect:
@@ -242,7 +242,7 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number'])
 
         R_moon = read_value('Enter the radius of the moon in Io radii:', 1e-3, 1e3, R_Io)
 
-        RadialWind = read_str('Do you want to add radially escaping winds in the escaping scenario?', ['yes', 'no'])
+        RadialWind = read_str('Do you want to add radially escaping winds in the exomoon scenario?', ['yes', 'no'])
 
         params = {'R_moon': R_moon, 'RadialWind': RadialWind}
 
