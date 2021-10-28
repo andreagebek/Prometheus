@@ -1,0 +1,206 @@
+"""
+Calculate the light curve of a transiting exoplanet.
+Created on 15. July 2021 by Andrea Gebek.
+"""
+
+import numpy as np
+from scipy.interpolate import interp1d
+import eliteScripts.constants as const
+import eliteScripts.geometryHandler as geom
+import eliteScripts.gasProperties as gasprop
+import eliteScripts.stellarSpectrum as stellar
+
+def constructSpatialGrid(gridsDict, architectureDict):
+
+    x_border = gridsDict['x_border']
+    x_steps = gridsDict['x_steps']
+    x_axis = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
+
+    rho_steps = gridsDict['rho_steps']
+    rho_axis = np.linspace(0, architectureDict['R_star'], int(rho_steps) + 1)[:-1] + 0.5 * architectureDict['R_star'] / float(rho_steps)
+
+    phi_steps = gridsDict['phi_steps']
+    phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
+
+    orbphase_border = gridsDict['orbphase_border']
+    orbphase_axis = np.linspace(-orbphase_border, orbphase_border, int(gridsDict['orbphase_steps']))
+
+    x, phi, rho, orbphase = np.meshgrid(x_axis, phi_axis, rho_axis, orbphase_axis, indexing = 'ij')
+    
+    return x, phi, rho, orbphase
+
+def calculateCLV(rho, R_star, u1, u2):
+
+    arg = 1. - np.sqrt(1. - rho**2 / R_star**2)
+
+    return 1. - u1 * arg - u2 * arg**2
+
+def calculateRM(wavelength, architectureDict, gridsDict):
+
+    i_starrot = architectureDict['inclination_starrot']
+    phi_starrot = architectureDict['azimuth_starrot']
+    T_starrot = architectureDict['period_starrot']
+    R_star = architectureDict['R_star']
+
+    phi_steps = gridsDict['phi_steps']
+    rho_steps = gridsDict['rho_steps']
+
+    phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
+    rho_axis = np.linspace(0, R_star, int(rho_steps) + 1)[:-1] + 0.5 * R_star / float(rho_steps)
+
+    PHOENIX_output = stellar.readSpectrum(architectureDict['T_eff'], architectureDict['log_g'], architectureDict['Fe_H'], architectureDict['alpha_Fe'])
+    w_star = PHOENIX_output[0]
+    v_max = 2. * np.pi * R_star / T_starrot
+    w_max = np.max(wavelength * gasprop.calculateDopplerShift(-v_max))
+    w_min = np.min(wavelength * gasprop.calculateDopplerShift(v_max))
+    SEL_w = np.argwhere((w_star > w_min) * (w_star < w_max))[:, 0]
+
+    SEL = np.concatenate((np.array([np.min(SEL_w) - 1]), SEL_w, np.array([np.max(SEL_w) + 1])))
+
+    w_star = w_star[SEL]
+    F_0 = PHOENIX_output[1][SEL]
+
+    dir_omega = np.array([-np.sin(i_starrot) * np.cos(phi_starrot), -np.sin(i_starrot) * np.sin(phi_starrot), np.cos(i_starrot)])
+    omega = 2. * np.pi / T_starrot * dir_omega # Angular velocity vector of the stellar rotation
+    r_surface = np.array([np.tensordot(np.ones(int(phi_steps)), np.sqrt(R_star**2 - rho_axis**2), axes = 0), 
+    np.tensordot(np.sin(phi_axis), rho_axis, axes = 0), np.tensordot(np.cos(phi_axis), rho_axis, axes = 0)])
+    # Vector to the surface of the star
+    v_los = np.cross(omega, r_surface, axisb = 0)[:, :, 0] # The line-of-sight velocity is the one along the x-axis
+    w_shift = gasprop.calculateDopplerShift(v_los)
+
+    F_function = interp1d(w_star, F_0, kind = 'cubic')
+    F_shifted = F_function(np.tensordot(wavelength, 1. / w_shift, axes = 0)) # This contains the shifted flux incident on the exoplanet, instead of shifting the spectra
+    # at all positions on the stellar surface just read in the spectrum at different wavelengths depending on the position in the spatial grid (phi and rho)
+
+    return F_shifted
+
+def getStarFactors(wavelength, fundamentalsDict, architectureDict, gridsDict):
+    # Return F_star(wavelength, phi, rho) and its integral over the stellar disk
+
+    R_star = architectureDict['R_star']
+    phi_steps = gridsDict['phi_steps']
+    rho_steps = gridsDict['rho_steps']
+
+    rho_axis = np.linspace(0, R_star, int(rho_steps) + 1)[:-1] + 0.5 * R_star / float(rho_steps)
+
+
+    if not fundamentalsDict['CLV_variations'] and not fundamentalsDict['RM_effect']:
+
+        F_star = np.ones((len(wavelength), int(phi_steps), int(rho_steps)))
+        F_star_integrated = np.pi * R_star**2
+
+        return F_star, F_star_integrated
+
+    elif fundamentalsDict['CLV_variations'] and not fundamentalsDict['RM_effect']:
+
+        F_star = np.tile(calculateCLV(rho_axis, R_star, architectureDict['u1'], architectureDict['u2']), (len(wavelength), int(phi_steps), 1))
+        F_star_integrated = np.pi * R_star**2 * (1. - architectureDict['u1'] / 3. - architectureDict['u2'] / 6.)
+
+        return F_star, F_star_integrated
+
+    else: # RM_effect = True
+
+        F_star = calculateRM(wavelength, architectureDict, gridsDict)
+
+        if fundamentalsDict['CLV_variations']:
+
+            F_star *= np.tile(calculateCLV(rho_axis, R_star, architectureDict['u1'], architectureDict['u2']), (len(wavelength), int(phi_steps), 1))
+        
+        delta_rho = R_star / float(rho_steps)
+        delta_phi = 2 * np.pi / float(phi_steps)
+
+        F_star_integralphi = delta_phi * np.sum(F_star, axis = 1)
+        F_star_integralrho = delta_rho * np.tensordot(rho_axis, F_star_integralphi, axes = [0, 1])
+        F_star_integrated = np.tile(F_star_integralrho, (int(gridsDict['orbphase_steps']), 1)).T    
+        # Here, the integrated F_star depends on wavelength. Promote it to F_star_integrated(wavelength, orbphase).
+
+        return F_star, F_star_integrated
+
+
+
+
+def calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict):
+
+    delta_x = 2 * gridsDict['x_border'] / float(gridsDict['x_steps'])
+
+    tau = 0
+
+    for key_scenario in scenarioDict.keys():
+
+        specificScenarioDict = scenarioDict[key_scenario]
+
+        n = gasprop.getNumberDensity(x, phi, rho, orbphase, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)     
+
+        sigma_abs = gasprop.getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict)
+
+        n = np.tile(n, (len(wavelength), 1, 1, 1, 1))
+
+        tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)
+
+    return tau # tau(lambda, phi, rho, t)
+
+
+def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict):
+    """Calculate the wavelength-dependent transit depth
+    """
+
+    x, phi, rho, orbphase = constructSpatialGrid(gridsDict, architectureDict)
+
+    wavelength = np.arange(gridsDict['lower_w'], gridsDict['upper_w'], gridsDict['resolution'])
+    
+    tau = calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict)
+    singleChord = np.exp(-tau)
+
+
+    delta_rho = architectureDict['R_star'] / float(gridsDict['rho_steps'])
+    delta_phi = 2 * np.pi / float(gridsDict['phi_steps'])
+
+    F_star_untiled, F_star_integrated = getStarFactors(wavelength, fundamentalsDict, architectureDict, gridsDict)
+    F_star_tiled = np.tile(F_star_untiled, (int(gridsDict['orbphase_steps']), 1, 1, 1))
+    F_star = np.moveaxis(F_star_tiled, 0, -1) # F_star(lambda, phi, rho, orbphase)
+
+    integral_phi = delta_phi * np.sum(np.multiply(F_star, singleChord), axis = 1) # f(lambda, rho, orbphase)
+  
+    sum_over_chords = delta_rho * np.tensordot(rho[0, 0, :, 0], integral_phi, axes = [0, 1]) # Integrate along the rho-axis
+
+    R = sum_over_chords / F_star_integrated # R(lambda, orbphase)
+
+    resultsDict = {'R': R}
+
+    if outputDict['recordTau']:
+
+        argmaxR =  np.unravel_index(np.argmin(R, axis = None), sum_over_chords.shape)
+
+        tauDisk = tau[argmaxR[0], :, :, argmaxR[1]]
+        
+        resultsDict['tauDisk'] = tauDisk
+
+    if outputDict['benchmark']:
+
+        R_benchmark = calculateBarometricBenchmark(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict['barometric'], speciesDict)
+
+        resultsDict['R_benchmark'] = R_benchmark
+
+    return resultsDict
+
+
+def calculateBarometricBenchmark(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, specificScenarioDict, speciesDict):
+    T = specificScenarioDict['T']
+    P_0 = specificScenarioDict['P_0']
+    mu = specificScenarioDict['mu']
+    R_0 = architectureDict['R_0']
+    M_p = architectureDict['M_p']
+    R_star = architectureDict['R_star']
+
+    H = const.k_B * T * R_0**2 / (const.G * mu * M_p)
+    g = const.G * M_p / R_0**2
+
+    sigma_abs = gasprop.getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, 'barometric', fundamentalsDict, specificScenarioDict, architectureDict, speciesDict)[:, 0, 0, 0, :]
+    # Absorption cross section for the benchmark cannot depend on the spatial position, i.e. sigma_abs(lambda, t)
+
+    kappa = sigma_abs / mu
+    R_lambda = R_0 + H * (const.euler_mascheroni + np.log(P_0 * kappa / g * np.sqrt(2 * np.pi * R_0 / H)))
+    benchmark_spectrum = (R_star**2 - R_lambda**2) / R_star**2
+
+    return benchmark_spectrum
+

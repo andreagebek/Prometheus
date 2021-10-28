@@ -21,7 +21,7 @@ def round_to_grid(grid, value):
 
     return grid[arg]
 
-def get_spectrum(T,logg,Z,a):
+def getSpectrum(T,logg,Z,a):
     """Querying a PHOENIX photosphere model, either from disk or from the
         PHOENIX website if the spectrum hasn't been downloaded before, and
         returning the names of the files in the data subfolder. These may then
@@ -93,7 +93,7 @@ def get_spectrum(T,logg,Z,a):
 
     return(wavename,specname)
 
-def read_spectrum(T,logg,metallicity=0.0,alpha=0.0):
+def readSpectrum(T,logg,metallicity=0.0,alpha=0.0):
     """Wrapper for the function get_spectrum() above, that checks that the input
         T, log(g), metallicity and alpha are in accordance with what is provided by
         PHOENIX (as of November 1st, 2019), and passes them on to get_spectrum().
@@ -132,14 +132,12 @@ def read_spectrum(T,logg,metallicity=0.0,alpha=0.0):
     alpha = round_to_grid(alpha_a, alpha)
 
     #Retrieve the spectra:
-    wavename,specname = get_spectrum(T,logg,metallicity,alpha)
+    wavename,specname = getSpectrum(T,logg,metallicity,alpha)
     f = fits.getdata(specname)
     w = fits.getdata(wavename)
 
     os.remove(wavename)
     os.remove(specname)
 
-    mask = (w > 5889.9) * (w < 5890.2)
-
-    return(w * 1e-8, f) # Conversion to cgs-units. Note that Jens divides f by
+    return(w * 1e-8, f / np.pi) # Conversion to cgs-units. Note that Jens divides f by
     # a seemingly random factor of pi, but this should not bother the transit calculations here. 
