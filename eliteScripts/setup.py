@@ -334,7 +334,7 @@ for key_scenario in speciesDict.keys():
             
             else:   
 
-                params['sigma_v'] = read_value('Enter the psuedo-thermal velocity dispersion (sigma_v = sqrt(k_B * T / m))  of ' + key_species + ' in the ' + key_scenario + ' \
+                params['sigma_v'] = read_value('Enter the pseudo-thermal velocity dispersion (sigma_v = sqrt(k_B * T / m))  of ' + key_species + ' in the ' + key_scenario + ' \
 scenario in km/s:', 1e-3, 1e5, 1e5)
    
         else:
