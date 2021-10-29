@@ -24,7 +24,7 @@ def getMoonPosition(architectureDict, orbphase):
     orbphase_moon = getOrbphaseMoon(architectureDict, orbphase)
 
     x_moon = architectureDict['a_moon'] * np.cos(orbphase_moon)     # Planet is always at x = 0
-    y_moon = getPlanetPosition(architectureDict, orbphase)[1] + np.sin(orbphase_moon)
+    y_moon = getPlanetPosition(architectureDict, orbphase)[1] + architectureDict['a_moon'] * np.sin(orbphase_moon)
 
     return x_moon, y_moon
 
