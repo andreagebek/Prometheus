@@ -8,6 +8,10 @@ Created on 19. October 2021 by Andrea Gebek.
 import numpy as np
 import sys
 from scipy.special import erf, voigt_profile
+import os
+SCRIPTPATH = os.path.realpath(__file__)
+GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
+sys.path.append(GITPATH)
 import eliteScripts.constants as const
 import eliteScripts.geometryHandler as geom
 
@@ -220,7 +224,7 @@ Calculate absorption cross sections
 
 def readLineList(key_species, wavelength):
 
-    LineList = np.loadtxt('LineList.txt', dtype = str, usecols = (0, 1, 2, 3, 4), skiprows = 1)
+    LineList = np.loadtxt(GITPATH + '/LineList.txt', dtype = str, usecols = (0, 1, 2, 3, 4), skiprows = 1)
 
     line_wavelength = np.array([x[1:-1] for x in LineList[:, 2]])
     line_A = np.array([x[1:-1] for x in LineList[:, 3]])

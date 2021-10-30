@@ -9,8 +9,13 @@ import matplotlib.pyplot as plt
 import matplotlib
 import json
 import sys
-sys.path.append('../')
+import os
+SCRIPTPATH = os.path.realpath(__file__)
+GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
+PARENTPATH = os.path.dirname(GITPATH)
+sys.path.append(GITPATH) 
 import eliteScripts.geometryHandler as geom
+import eliteScripts.fluxDecrease as flux
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
@@ -38,7 +43,7 @@ plotXwobble = True
 
 paramsFilename = sys.argv[1]
 
-with open('../../setupFiles/' + paramsFilename + '.txt') as file:
+with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
 architectureDict = param['Architecture']
@@ -55,10 +60,10 @@ rho_steps = gridsDict['rho_steps']
 orbphase_border = gridsDict['orbphase_border']
 orbphase_steps = gridsDict['orbphase_steps']
 
-x_axis = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
-rho_axis = np.linspace(0, R_star, int(rho_steps) + 1)[:-1] + 0.5 * R_star / float(rho_steps)
-phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
-orbphase_axis = np.linspace(-orbphase_border, orbphase_border, int(orbphase_steps)) * 2 * np.pi # In radiants
+x_axis = flux.constructAxis(gridsDict, architectureDict, 'x')
+rho_axis = flux.constructAxis(gridsDict, architectureDict, 'rho')
+phi_axis = flux.constructAxis(gridsDict, architectureDict, 'phi')
+orbphase_axis = flux.constructAxis(gridsDict, architectureDict, 'orbphase') # In radians
 
 """
 Plot face-on view
@@ -115,7 +120,7 @@ ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
 
 plt.tight_layout()
 
-plt.savefig('../../figures/' + paramsFilename + '_gridFaceOnPlot.pdf', dpi = 50)
+plt.savefig(PARENTPATH + '/figures/' + paramsFilename + '_gridFaceOnPlot.pdf', dpi = 50)
 
 """
 Plot birds-eye view
@@ -174,4 +179,4 @@ ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
 
 plt.tight_layout()
 
-plt.savefig('../../figures/' + paramsFilename + '_gridBirdsEyePlot.pdf', dpi = 50)
+plt.savefig(PARENTPATH + '/figures/' + paramsFilename + '_gridBirdsEyePlot.pdf', dpi = 50)

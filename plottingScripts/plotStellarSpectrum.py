@@ -10,9 +10,14 @@ import matplotlib.pyplot as plt
 import matplotlib
 import json
 import sys
-sys.path.insert(0, '../pythonScripts') # Import from pythonScripts folder
-from stellarspectrum import *
-from constants import *
+import os
+SCRIPTPATH = os.path.realpath(__file__)
+GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
+PARENTPATH = os.path.dirname(GITPATH)
+sys.path.append(GITPATH) 
+import eliteScripts.gasProperties as gasprop
+import eliteScripts.stellarSpectrum as stellar
+
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
@@ -27,43 +32,36 @@ matplotlib.rcParams['image.origin'] = 'lower'
 matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 
 """
-Helper function for the Doppler shift
-"""
-
-def Doppler(v):
-    # If v is positive, receiver and source are moving towards each other
-    beta = v / c
-    shift = np.sqrt((1. - beta) / (1. + beta))
-
-    return shift
-
-"""
 Read in settings file and calculate stellar spectrum
 """
 
+plotDopplerShift = True
+
 paramsFilename = sys.argv[1]
 
-with open('../../' + paramsFilename + '.txt') as file:
+with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
-R_s = param['Architecture']['R_star']
-period_starrot = param['Architecture']['period_starrot']
+architectureDict = param['Architecture']
+gridsDict = param['Grids']
 
-grids_dict = param['Grids']
+R_star = architectureDict['R_star']
+T_starrot = architectureDict['period_starrot']
 
-wavelength = np.arange(grids_dict['lower_w'], grids_dict['upper_w'], grids_dict['resolution'])
 
-T_eff = param['Architecture']['T_eff']
-log_g = param['Architecture']['log_g']
-Fe_H = param['Architecture']['Fe_H']
-alpha_Fe = param['Architecture']['alpha_Fe']
+wavelength = np.arange(gridsDict['lower_w'], gridsDict['upper_w'], gridsDict['resolution'])
 
-PHOENIX_output = read_spectrum(T_eff, log_g, Fe_H, alpha_Fe)
+T_eff = architectureDict['T_eff']
+log_g = architectureDict['log_g']
+Fe_H = architectureDict['Fe_H']
+alpha_Fe = architectureDict['alpha_Fe']
+
+PHOENIX_output = stellar.readSpectrum(T_eff, log_g, Fe_H, alpha_Fe)
 
 w_star = PHOENIX_output[0]
-v_max = 2. * np.pi * R_s / period_starrot
-w_max = np.max(wavelength * Doppler(-v_max))
-w_min = np.min(wavelength * Doppler(v_max))
+v_max = 2. * np.pi * R_star / T_starrot
+w_max = np.max(wavelength * gasprop.calculateDopplerShift(-v_max))
+w_min = np.min(wavelength * gasprop.calculateDopplerShift(v_max))
 SEL_w = np.argwhere((w_star > w_min) * (w_star < w_max))[:, 0]
 
 SEL = np.concatenate((np.array([np.min(SEL_w) - 1]), SEL_w, np.array([np.max(SEL_w) + 1])))
@@ -84,6 +82,11 @@ ax = fig.add_subplot(111)
 ax.plot(w_star * 1e8, F_0, color = 'blue', linewidth = 2)
 
 
+if plotDopplerShift:
+    delta_w_max = (gasprop.calculateDopplerShift(v_max) - 1.) * np.mean(wavelength) * 1e8
+    plt.arrow(np.mean(wavelength) * 1e8, np.min(F_0), delta_w_max, 0, linewidth = 10, facecolor = 'black')
+    ax.annotate(r'$\Delta \lambda$', xy = (np.mean(wavelength) * 1e8, 1.2 * np.min(F_0)), ha = 'center')  
+
 ax.set_xlabel(r'$\lambda\,[\AA]$')
 ax.set_ylabel(r'$F_{\nu}\,[\rm{erg\,s^{-1}\,cm^{-2}\,cm^{-1}}]$')
 
@@ -95,4 +98,4 @@ ax.set_xlim(np.min(w_star * 1e8), np.max(w_star * 1e8))
 
 plt.tight_layout()
 
-plt.savefig('../../' + paramsFilename + '_stellarSpectrumPlot.pdf', dpi = 150)
+plt.savefig(PARENTPATH + '/figures/' + paramsFilename + '_stellarSpectrumPlot.pdf', dpi = 150)

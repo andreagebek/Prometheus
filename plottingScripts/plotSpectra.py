@@ -10,6 +10,12 @@ import matplotlib.pyplot as plt
 import matplotlib
 import json
 import sys
+import os
+SCRIPTPATH = os.path.realpath(__file__)
+GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
+PARENTPATH = os.path.dirname(GITPATH)
+sys.path.append(GITPATH)
+import eliteScripts.fluxDecrease as flux 
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
@@ -36,14 +42,14 @@ plotBenchmarkSpectra = True # Plot barometric benchmark spectra at all orbital p
 
 paramsFilename = sys.argv[1]
 
-with open('../../setupFiles/' + paramsFilename + '.txt') as file:
+with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
 architectureDict = param['Architecture']
 gridsDict = param['Grids']
 
-orbphase = np.linspace(-gridsDict['orbphase_border'], gridsDict['orbphase_border'], int(gridsDict['orbphase_steps']))
-wavelength = np.arange(gridsDict['lower_w'], gridsDict['upper_w'], gridsDict['resolution']) * 1e8 # In Angstrom
+orbphase = flux.constructAxis(gridsDict, architectureDict, 'orbphase')
+wavelength = flux.constructAxis(gridsDict, architectureDict, 'wavelength') * 1e8 # In Angstrom
 
 R_star = architectureDict['R_star']
 R_0 = architectureDict['R_0']
@@ -51,7 +57,7 @@ a_p = architectureDict['a_p']
 
 benchmark = param['Output']['benchmark']
 
-LightcurveFile = np.loadtxt('../../output/' + paramsFilename + '_lightcurve.txt')
+LightcurveFile = np.loadtxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt')
 
 R = LightcurveFile[:, 2].reshape(len(wavelength), len(orbphase))
 
@@ -62,7 +68,7 @@ for idx in range(len(orbphase)):
 
 if benchmark:
 
-    R_benchmark = np.loadtxt('../../output/' + paramsFilename + '_barometricBenchmark.txt')[:, 2].reshape(len(wavelength), len(orbphase))
+    R_benchmark = np.loadtxt(PARENTPATH + '/output/' + paramsFilename + '_barometricBenchmark.txt')[:, 2].reshape(len(wavelength), len(orbphase))
 
     R_benchmark_plot = []
     for idx in range(len(orbphase)):
@@ -116,4 +122,4 @@ ax.set_ylim(np.min(R_plot) - 0.05 * (1 - np.min(R_plot)), 1 + 0.05 * (1 - np.min
 
 plt.tight_layout()
 
-plt.savefig('../../figures/' + paramsFilename + '_spectrumPlot.pdf', dpi = 150)
+plt.savefig(PARENTPATH + '/figures/' + paramsFilename + '_spectrumPlot.pdf', dpi = 150)

@@ -5,25 +5,62 @@ Created on 15. July 2021 by Andrea Gebek.
 
 import numpy as np
 from scipy.interpolate import interp1d
+import sys
+import os
+SCRIPTPATH = os.path.realpath(__file__)
+GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
+sys.path.append(GITPATH) 
 import eliteScripts.constants as const
 import eliteScripts.geometryHandler as geom
 import eliteScripts.gasProperties as gasprop
 import eliteScripts.stellarSpectrum as stellar
 
+def constructAxis(gridsDict, architectureDict, axisName):
+
+    if axisName == 'x':
+
+        x_border = gridsDict['x_border']
+        x_steps = gridsDict['x_steps']
+        x_axis = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)  
+
+        return x_axis
+
+    elif axisName == 'rho':   
+
+        rho_steps = gridsDict['rho_steps']
+        rho_axis = np.linspace(0, architectureDict['R_star'], int(rho_steps) + 1)[:-1] + 0.5 * architectureDict['R_star'] / float(rho_steps)
+
+        return rho_axis
+
+    elif axisName == 'phi':
+
+        phi_steps = gridsDict['phi_steps']
+        phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
+
+        return phi_axis
+
+    elif axisName == 'orbphase':
+
+        orbphase_border = gridsDict['orbphase_border']
+        orbphase_axis = np.linspace(-orbphase_border, orbphase_border, int(gridsDict['orbphase_steps']))
+
+        return orbphase_axis  
+
+    elif axisName == 'wavelength':
+
+        wavelength = np.arange(gridsDict['lower_w'], gridsDict['upper_w'], gridsDict['resolution'])
+
+        return wavelength
+
 def constructSpatialGrid(gridsDict, architectureDict):
 
-    x_border = gridsDict['x_border']
-    x_steps = gridsDict['x_steps']
-    x_axis = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)
+    x_axis = constructAxis(gridsDict, architectureDict, 'x')
 
-    rho_steps = gridsDict['rho_steps']
-    rho_axis = np.linspace(0, architectureDict['R_star'], int(rho_steps) + 1)[:-1] + 0.5 * architectureDict['R_star'] / float(rho_steps)
+    rho_axis = constructAxis(gridsDict, architectureDict, 'rho')
 
-    phi_steps = gridsDict['phi_steps']
-    phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
+    phi_axis = constructAxis(gridsDict, architectureDict, 'phi')
 
-    orbphase_border = gridsDict['orbphase_border']
-    orbphase_axis = np.linspace(-orbphase_border, orbphase_border, int(gridsDict['orbphase_steps']))
+    orbphase_axis = constructAxis(gridsDict, architectureDict, 'orbphase')
 
     x, phi, rho, orbphase = np.meshgrid(x_axis, phi_axis, rho_axis, orbphase_axis, indexing = 'ij')
     
@@ -45,8 +82,8 @@ def calculateRM(wavelength, architectureDict, gridsDict):
     phi_steps = gridsDict['phi_steps']
     rho_steps = gridsDict['rho_steps']
 
-    phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
-    rho_axis = np.linspace(0, R_star, int(rho_steps) + 1)[:-1] + 0.5 * R_star / float(rho_steps)
+    phi_axis = constructAxis(gridsDict, architectureDict, 'phi')
+    rho_axis = constructAxis(gridsDict, architectureDict, 'rho')
 
     PHOENIX_output = stellar.readSpectrum(architectureDict['T_eff'], architectureDict['log_g'], architectureDict['Fe_H'], architectureDict['alpha_Fe'])
     w_star = PHOENIX_output[0]
@@ -81,8 +118,7 @@ def getStarFactors(wavelength, fundamentalsDict, architectureDict, gridsDict):
     phi_steps = gridsDict['phi_steps']
     rho_steps = gridsDict['rho_steps']
 
-    rho_axis = np.linspace(0, R_star, int(rho_steps) + 1)[:-1] + 0.5 * R_star / float(rho_steps)
-
+    rho_axis = constructAxis(gridsDict, architectureDict, 'rho')
 
     if not fundamentalsDict['CLV_variations'] and not fundamentalsDict['RM_effect']:
 
@@ -146,7 +182,7 @@ def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, spec
 
     x, phi, rho, orbphase = constructSpatialGrid(gridsDict, architectureDict)
 
-    wavelength = np.arange(gridsDict['lower_w'], gridsDict['upper_w'], gridsDict['resolution'])
+    wavelength = constructAxis(gridsDict, architectureDict, 'wavelength')
     
     tau = calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict)
     singleChord = np.exp(-tau)

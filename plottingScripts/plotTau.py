@@ -10,6 +10,12 @@ import matplotlib.pyplot as plt
 import matplotlib
 import json
 import sys
+import os
+SCRIPTPATH = os.path.realpath(__file__)
+GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
+PARENTPATH = os.path.dirname(GITPATH)
+sys.path.append(GITPATH) 
+import eliteScripts.geometryHandler as geom
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
@@ -32,7 +38,7 @@ plotStar = True
 
 paramsFilename = sys.argv[1]
 
-with open('../../setupFiles/' + paramsFilename + '.txt') as file:
+with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
 architectureDict = param['Architecture']
@@ -44,15 +50,14 @@ rho_steps = int(gridsDict['rho_steps'])
 R_0 = architectureDict['R_0']
 R_star = architectureDict['R_star']
 
-tauFile = np.loadtxt('../../output/' + paramsFilename + '_tau.txt')
+tauFile = np.loadtxt(PARENTPATH + '/output/' + paramsFilename + '_tau.txt')
 
 
 phi = tauFile[:, 0].reshape(phi_steps, rho_steps)
 rho = tauFile[:, 1].reshape(phi_steps, rho_steps)
 tau = tauFile[:, 2].reshape(phi_steps, rho_steps)
 
-y = rho * np.sin(phi) / R_0
-z = rho * np.cos(phi) / R_0
+x, y, z = geom.getCartesianFromCylinder(0, phi, rho) # x is not used here
 
 
 fig = plt.figure(figsize=(10, 8))
@@ -61,7 +66,7 @@ ax = fig.add_subplot(111)
 
 
 with np.errstate(divide = 'ignore'):
-    plt.scatter(y, z, c = np.log10(tau), s = 2, vmin = -3, vmax = 3, cmap = 'Spectral_r')
+    plt.scatter(y / R_0, z / R_0, c = np.log10(tau), s = 2, vmin = -3, vmax = 3, cmap = 'Spectral_r')
 
 if plotPlanet:
     planetCircle = plt.Circle((0, 0), 1, color = 'black', linewidth = 0)
@@ -88,4 +93,4 @@ ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
 
 plt.tight_layout()
 
-plt.savefig('../../figures/' + paramsFilename + '_tauPlot.pdf', dpi = 50)
+plt.savefig(PARENTPATH + '/figures/' + paramsFilename + '_tauPlot.pdf', dpi = 50)

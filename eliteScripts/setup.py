@@ -7,6 +7,11 @@ Created on 2. June 2021 by Andrea Gebek.
 import numpy as np
 import json
 import sys
+import os
+SCRIPTPATH = os.path.realpath(__file__)
+GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
+PARENTPATH = os.path.dirname(GITPATH)
+sys.path.append(GITPATH)
 
 import eliteScripts.constants as const
 
@@ -397,5 +402,5 @@ print('\n\nAll parameters are stored! To run DISHOOM-ELITE, type <python main.py
 parameters = {'Fundamentals': fundamentalsDict, 'Architecture': architectureDict, 'Scenarios': scenarioDict, 'Species': speciesDict, 'Grids': gridsDict, 'Output': outputDict}
 
 
-with open('../SetupFiles/' + paramsFilename + '.txt', 'w') as outfile:
+with open(PARENTPATH +'/setupFiles/' + paramsFilename + '.txt', 'w') as outfile:
     json.dump(parameters, outfile)
