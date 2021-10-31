@@ -252,7 +252,7 @@ def calculateLineAbsorption(wavelength, line_wavelength, line_gamma, line_f, spe
 
     for idx in range(len(line_wavelength)):
 
-        lineProfile = voigt_profile(const.c / wavelength - const.c / line_wavelength[idx], line_gamma[idx], sigma_v / (line_wavelength[idx])) # Calculation in frequency space
+        lineProfile = voigt_profile(const.c / wavelength - const.c / line_wavelength[idx], sigma_v / line_wavelength[idx], line_gamma[idx]) # Calculation in frequency space
         sigma_abs_species += np.pi * (const.e)**2 / (const.m_e * const.c) * line_f[idx] * chi * lineProfile # Draine 2013
 
     return sigma_abs_species

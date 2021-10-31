@@ -344,14 +344,14 @@ scenario in km/s:', 1e-3, 1e5, 1e5)
    
         else:
 
-            params['T_abs'] = 0
+            params['sigma_v'] = 0
 
         speciesDict[key_scenario][key_species] = params
 
 
 
 """
-Performance parameters
+Grid parameters
 """
 
 print('\nAlmost done! Specify the discretization parameters for the wavelength and spatial grids.\n')

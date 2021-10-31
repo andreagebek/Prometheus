@@ -17,6 +17,7 @@ PARENTPATH = os.path.dirname(GITPATH)
 sys.path.append(GITPATH) 
 import eliteScripts.gasProperties as gasprop
 import eliteScripts.stellarSpectrum as stellar
+import eliteScripts.fluxDecrease as flux
 
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
@@ -49,7 +50,7 @@ R_star = architectureDict['R_star']
 T_starrot = architectureDict['period_starrot']
 
 
-wavelength = np.arange(gridsDict['lower_w'], gridsDict['upper_w'], gridsDict['resolution'])
+wavelength = flux.constructAxis(gridsDict, architectureDict, 'wavelength')
 
 T_eff = architectureDict['T_eff']
 log_g = architectureDict['log_g']

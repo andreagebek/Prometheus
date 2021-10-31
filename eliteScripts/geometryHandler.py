@@ -101,3 +101,19 @@ def getDistanceFromMoon(architectureDict, x, phi, rho, orbphase):
 
     return r_fromMoon
 
+
+def calculateStellarLOSvelocity(architectureDict, phi, rho):
+    
+    i_starrot = architectureDict['inclination_starrot']
+    phi_starrot = architectureDict['azimuth_starrot']
+    T_starrot = architectureDict['period_starrot']
+    R_star = architectureDict['R_star']
+
+    dir_omega = np.array([-np.sin(i_starrot) * np.cos(phi_starrot), -np.sin(i_starrot) * np.sin(phi_starrot), np.cos(i_starrot)])
+    omega = 2. * np.pi / T_starrot * dir_omega # Angular velocity vector of the stellar rotation
+    r_surface = np.array([np.tensordot(np.ones(len(phi)), np.sqrt(R_star**2 - rho**2), axes = 0), 
+    np.tensordot(np.sin(phi), rho, axes = 0), np.tensordot(np.cos(phi), rho, axes = 0)])
+    # Vector to the surface of the star
+    v_los = np.cross(omega, r_surface, axisb = 0)[:, :, 0] # The line-of-sight velocity is the one along the x-axis
+
+    return v_los

@@ -79,9 +79,6 @@ def calculateRM(wavelength, architectureDict, gridsDict):
     T_starrot = architectureDict['period_starrot']
     R_star = architectureDict['R_star']
 
-    phi_steps = gridsDict['phi_steps']
-    rho_steps = gridsDict['rho_steps']
-
     phi_axis = constructAxis(gridsDict, architectureDict, 'phi')
     rho_axis = constructAxis(gridsDict, architectureDict, 'rho')
 
@@ -97,12 +94,7 @@ def calculateRM(wavelength, architectureDict, gridsDict):
     w_star = w_star[SEL]
     F_0 = PHOENIX_output[1][SEL]
 
-    dir_omega = np.array([-np.sin(i_starrot) * np.cos(phi_starrot), -np.sin(i_starrot) * np.sin(phi_starrot), np.cos(i_starrot)])
-    omega = 2. * np.pi / T_starrot * dir_omega # Angular velocity vector of the stellar rotation
-    r_surface = np.array([np.tensordot(np.ones(int(phi_steps)), np.sqrt(R_star**2 - rho_axis**2), axes = 0), 
-    np.tensordot(np.sin(phi_axis), rho_axis, axes = 0), np.tensordot(np.cos(phi_axis), rho_axis, axes = 0)])
-    # Vector to the surface of the star
-    v_los = np.cross(omega, r_surface, axisb = 0)[:, :, 0] # The line-of-sight velocity is the one along the x-axis
+    v_los = geom.calculateStellarLOSvelocity(architectureDict, phi_axis, rho_axis)
     w_shift = gasprop.calculateDopplerShift(v_los)
 
     F_function = interp1d(w_star, F_0, kind = 'cubic')

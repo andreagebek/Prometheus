@@ -10,6 +10,12 @@ import matplotlib.pyplot as plt
 import matplotlib
 import json
 import sys
+import os
+SCRIPTPATH = os.path.realpath(__file__)
+GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
+PARENTPATH = os.path.dirname(GITPATH)
+sys.path.append(GITPATH)
+import eliteScripts.fluxDecrease as flux
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
@@ -29,27 +35,21 @@ Read in settings file and stored light curve
 
 paramsFilename = sys.argv[1]
 
-with open('../../' + paramsFilename + '.txt') as file:
+with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
-grids_dict = param['Grids']
+architectureDict = param['Architecture']
+gridsDict = param['Grids']
 
-wavelength = (np.arange(grids_dict['lower_w'], grids_dict['upper_w'] + grids_dict['resolution'], grids_dict['resolution']) - grids_dict['resolution']  / 2.) * 1e8 # In Angstrom
+wavelength_axis = flux.constructAxis(gridsDict, architectureDict, 'wavelength')
+orbphase_axis = flux.constructAxis(gridsDict, architectureDict, 'orbphase')
 
-LightcurveFile = np.loadtxt('../../' + paramsFilename + '_lightcurve.txt')
+wavelength, orbphase = np.meshgrid(wavelength_axis, orbphase_axis, indexing = 'ij')
 
-orbphase_border = grids_dict['orbphase_border']
-orbphase_steps = grids_dict['orbphase_steps']
-orbphase = np.linspace(-orbphase_border, orbphase_border + 2 * orbphase_border / (float(orbphase_steps) - 1.), 1 + int(orbphase_steps)) - orbphase_border / (float(orbphase_steps) - 1.)
+LightcurveFile = np.loadtxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt')
 
-wavelength_grid, orbphase_grid = np.meshgrid(wavelength, orbphase)
 
-lightcurve_list = []
-
-for idx in range(len(wavelength) - 1):
-    lightcurve_list.append(LightcurveFile[:, idx + 1])
-
-lightcurves = np.array(lightcurve_list)
+R = LightcurveFile[:, 2].reshape(len(wavelength_axis), len(orbphase_axis))
 
 """
 Plot the light curve and store the figure
@@ -60,11 +60,11 @@ ax = fig.add_subplot(111)
 
 cmap = matplotlib.cm.get_cmap('Accent')
 
-im = ax.pcolormesh(wavelength_grid, orbphase_grid / 2 * np.pi, lightcurves.T, cmap = 'Spectral')
+im = ax.pcolormesh(wavelength * 1e8, orbphase / 2 * np.pi, R, cmap = 'Spectral')
 
 cbar = fig.colorbar(im, ax = ax)
 cbar.set_label(r'$\Re$')
-
+cbar.ax.minorticks_on()
 
 ax.set_xlabel(r'$\lambda\,[\AA]$')
 ax.set_ylabel(r'$\rm{Orbital \ Phase}$')
@@ -75,4 +75,4 @@ ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
 
 plt.tight_layout()
 
-plt.savefig('../../' + paramsFilename + '_spectralFieldPlot.pdf', dpi = 150)
+plt.savefig(PARENTPATH + '/figures/' + paramsFilename + '_spectralFieldPlot.pdf', dpi = 150)

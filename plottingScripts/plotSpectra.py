@@ -36,7 +36,7 @@ the depth in the lightcurve during full occultation
 of the planet's R_0.
 """
 
-plotMeanSpectrum = False # Plot the spectrum averaged over all orbital phases between planetary ingress and egress
+plotMeanSpectrum = True # Plot the spectrum averaged over all orbital phases between planetary ingress and egress
 plotSpectra = True  # Plot the spectra at all orbital phases
 plotBenchmarkSpectra = True # Plot barometric benchmark spectra at all orbital phases (only if the barometric benchmark option is True in the setup file)
 
@@ -48,8 +48,8 @@ with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
 architectureDict = param['Architecture']
 gridsDict = param['Grids']
 
-orbphase = flux.constructAxis(gridsDict, architectureDict, 'orbphase')
-wavelength = flux.constructAxis(gridsDict, architectureDict, 'wavelength') * 1e8 # In Angstrom
+orbphase = flux.constructAxis(gridsDict, architectureDict, 'orbphase') # In radians
+wavelength = flux.constructAxis(gridsDict, architectureDict, 'wavelength') # In cm
 
 R_star = architectureDict['R_star']
 R_0 = architectureDict['R_0']
@@ -83,26 +83,26 @@ Plot the spectrum and store the figure
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111)
 
-cmap = matplotlib.cm.get_cmap('Accent')
+cmap = matplotlib.cm.get_cmap('viridis')
 
 for idx, r in enumerate(R_plot):
 
     if plotSpectra:
-        ax.plot(wavelength, r, color = cmap(float(idx) / float(len(orbphase))), linewidth = 1, label = r'$\phi=$' + str(np.round(orbphase[idx], 3)))
+        ax.plot(wavelength * 1e8, r, color = cmap(float(idx) / float(len(orbphase))), linewidth = 1, label = r'$\phi=$' + str(np.round(orbphase[idx] / (2. * np.pi), 3)))
 
     if benchmark and plotBenchmarkSpectra:
 
-        ax.plot(wavelength, R_benchmark_plot[idx], color = cmap(float(idx) / float(len(orbphase))), linewidth = 1, linestyle = '--')
+        ax.plot(wavelength * 1e8, R_benchmark_plot[idx], color = cmap(float(idx) / float(len(orbphase))), linewidth = 1, linestyle = '--')
 
-if len(orbphase) > 1 and plotMeanSpectrum:
+orbphaseFullIngress = np.arcsin((R_star - R_0) / a_p) # Orbital phase at which the planet's R_0 is fully within the stellar disk
+SEL = np.abs(orbphase) <= orbphaseFullIngress
 
-    orbphaseFullIngress = np.arcsin((R_star - R_0) / a_p) / (2. * np.pi) # Orbital phase at which the planet's R_0 is fully within the stellar disk
+if len(orbphase[SEL]) > 1 and plotMeanSpectrum:
 
-    SEL = np.abs(orbphase) <= orbphaseFullIngress
     R_avg = np.mean(R[:, SEL], axis = 1)
     R_avg_norm = R_avg + (1 - np.max(R_avg))
 
-    ax.plot(wavelength, R_avg_norm, color = 'black', linewidth = 2, label = 'Mean')
+    ax.plot(wavelength * 1e8, R_avg_norm, color = 'black', linewidth = 2, label = 'Mean')
 
 
 
@@ -117,7 +117,7 @@ ax.set_ylabel(r'$\Re$')
 ax.minorticks_on()
 ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
 
-ax.set_xlim(np.min(wavelength), np.max(wavelength))
+ax.set_xlim(np.min(wavelength) * 1e8, np.max(wavelength) * 1e8)
 ax.set_ylim(np.min(R_plot) - 0.05 * (1 - np.min(R_plot)), 1 + 0.05 * (1 - np.min(R_plot)))
 
 plt.tight_layout()
