@@ -211,9 +211,9 @@ def getExomoon_v(x, phi, rho, orbphase, specificScenarioDict, architectureDict):
 
 
     r = geom.getDistanceFromMoon(architectureDict, x, phi, rho, orbphase)
-    x_moon = geom.getMoonPosition(architectureDict, orbphase)
+    x_moon = geom.getMoonPosition(architectureDict, orbphase)[0]
 
-    v = v_0 * (r / R_moon)**(q_moon - 2.) * (x - x_moon) / r
+    v_los = v_0 * (r / R_moon)**(q_moon - 2.) * (x - x_moon) / r
 
     return v_los
 
@@ -289,6 +289,6 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
 
         if specificScenarioDict['RayleighScatt']:
 
-            sigma_abs += 8.49e-45 / wavelength**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
+            sigma_abs += 8.49e-45 / wavelengthShifted**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
 
     return sigma_abs

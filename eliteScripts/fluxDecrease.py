@@ -188,7 +188,7 @@ def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, spec
     F_star = np.moveaxis(F_star_tiled, 0, -1) # F_star(lambda, phi, rho, orbphase)
 
     integral_phi = delta_phi * np.sum(np.multiply(F_star, singleChord), axis = 1) # f(lambda, rho, orbphase)
-  
+
     sum_over_chords = delta_rho * np.tensordot(rho[0, 0, :, 0], integral_phi, axes = [0, 1]) # Integrate along the rho-axis
 
     R = sum_over_chords / F_star_integrated # R(lambda, orbphase)
