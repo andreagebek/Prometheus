@@ -85,8 +85,8 @@ ax.plot(w_star * 1e8, F_0, color = 'blue', linewidth = 2)
 
 if plotDopplerShift:
     delta_w_max = (gasprop.calculateDopplerShift(v_max) - 1.) * np.mean(wavelength) * 1e8
-    plt.arrow(np.mean(wavelength) * 1e8, np.min(F_0), delta_w_max, 0, linewidth = 10, facecolor = 'black')
-    ax.annotate(r'$\Delta \lambda$', xy = (np.mean(wavelength) * 1e8, 1.2 * np.min(F_0)), ha = 'center')  
+    plt.arrow(np.mean(wavelength) * 1e8, np.min(F_0), delta_w_max, 0, linewidth = 4, facecolor = 'black')
+    ax.annotate(r'$\Delta \lambda$', xy = (np.mean(wavelength) * 1e8, 1.5 * np.min(F_0)), ha = 'center')  
 
 ax.set_xlabel(r'$\lambda\,[\AA]$')
 ax.set_ylabel(r'$F_{\nu}\,[\rm{erg\,s^{-1}\,cm^{-2}\,cm^{-1}}]$')
