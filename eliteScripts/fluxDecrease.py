@@ -74,8 +74,6 @@ def calculateCLV(rho, R_star, u1, u2):
 
 def calculateRM(wavelength, architectureDict, gridsDict):
 
-    i_starrot = architectureDict['inclination_starrot']
-    phi_starrot = architectureDict['azimuth_starrot']
     T_starrot = architectureDict['period_starrot']
     R_star = architectureDict['R_star']
 

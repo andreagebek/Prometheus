@@ -49,7 +49,6 @@ def getPlanetRotationLOSvelocity(architectureDict, phi, rho, orbphase, key_scena
 
     if key_scenario == 'barometric' or key_scenario == 'hydrostatic' or key_scenario == 'escaping':
 
-        R_0 = architectureDict['R_0']
         period_planetrot = architectureDict['period_planetrot']
 
         y_p = getPlanetPosition(architectureDict, orbphase)[1]

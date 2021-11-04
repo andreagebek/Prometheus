@@ -39,6 +39,7 @@ of the planet's R_0.
 plotMeanSpectrum = True # Plot the spectrum averaged over all orbital phases between planetary ingress and egress
 plotSpectra = True  # Plot the spectra at all orbital phases
 plotBenchmarkSpectra = True # Plot barometric benchmark spectra at all orbital phases (only if the barometric benchmark option is True in the setup file)
+Normalize = False # Do a quick normalization of the spectra
 
 paramsFilename = sys.argv[1]
 
@@ -64,7 +65,10 @@ R = LightcurveFile[:, 2].reshape(len(wavelength), len(orbphase))
 R_plot = []
 for idx in range(len(orbphase)):
 
-    R_plot.append(R[:, idx] + (1 - np.max(R[:, idx]))) # Normalize the transit depth such that the smallest flux decrease is shifted to 1
+    if Normalize:
+        R_plot.append(R[:, idx] + (1 - np.max(R[:, idx]))) # Normalize the transit depth such that the smallest flux decrease is shifted to 1
+    else:
+        R_plot.append(R[:, idx])
 
 if benchmark:
 
@@ -73,8 +77,10 @@ if benchmark:
     R_benchmark_plot = []
     for idx in range(len(orbphase)):
 
-        R_benchmark_plot.append(R_benchmark[:, idx] + (1 - np.max(R_benchmark[:, idx]))) # Normalize the transit depth such that the smallest flux decrease is shifted to 1
-
+        if Normalize:
+            R_benchmark_plot.append(R_benchmark[:, idx] + (1 - np.max(R_benchmark[:, idx]))) # Normalize the transit depth such that the smallest flux decrease is shifted to 1
+        else:
+            R_benchmark_plot.append(R_benchmark[:, idx])
 """
 Plot the spectrum and store the figure
 """
@@ -100,9 +106,11 @@ SEL = np.abs(orbphase) <= orbphaseFullIngress
 if len(orbphase[SEL]) > 1 and plotMeanSpectrum:
 
     R_avg = np.mean(R[:, SEL], axis = 1)
-    R_avg_norm = R_avg + (1 - np.max(R_avg))
 
-    ax.plot(wavelength * 1e8, R_avg_norm, color = 'black', linewidth = 2, label = 'Mean')
+    if Normalize:
+        R_avg += 1 - np.max(R_avg)
+
+    ax.plot(wavelength * 1e8, R_avg, color = 'black', linewidth = 2, label = 'Mean')
 
 
 
