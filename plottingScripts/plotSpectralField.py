@@ -15,7 +15,7 @@ SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 PARENTPATH = os.path.dirname(GITPATH)
 sys.path.append(GITPATH)
-import eliteScripts.fluxDecrease as flux
+import prometheusScripts.fluxDecrease as flux
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10

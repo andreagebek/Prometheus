@@ -10,10 +10,10 @@ import os
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 sys.path.append(GITPATH) 
-import eliteScripts.constants as const
-import eliteScripts.geometryHandler as geom
-import eliteScripts.gasProperties as gasprop
-import eliteScripts.stellarSpectrum as stellar
+import prometheusScripts.constants as const
+import prometheusScripts.geometryHandler as geom
+import prometheusScripts.gasProperties as gasprop
+import prometheusScripts.stellarSpectrum as stellar
 
 def constructAxis(gridsDict, architectureDict, axisName):
 

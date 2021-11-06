@@ -12,8 +12,8 @@ import os
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 sys.path.append(GITPATH)
-import eliteScripts.constants as const
-import eliteScripts.geometryHandler as geom
+import prometheusScripts.constants as const
+import prometheusScripts.geometryHandler as geom
 
 """
 Number density functions

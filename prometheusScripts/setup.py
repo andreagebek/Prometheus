@@ -1,6 +1,6 @@
 """
 Run a question and answer session and store a settings.txt 
-file to run DISHOOM-ELITE.
+file to run DISHOOM-PROMETHEUS.
 Created on 2. June 2021 by Andrea Gebek.
 """
 
@@ -13,7 +13,7 @@ GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 PARENTPATH = os.path.dirname(GITPATH)
 sys.path.append(GITPATH)
 
-import eliteScripts.constants as const
+import prometheusScripts.constants as const
 
 
 def read_value(text, lower, upper, unit, roundBorders = True, digits = 0, acceptLowerBorder = False, acceptUpperBorder = False):
@@ -97,7 +97,7 @@ Fundamentals
 
 fundamentalsDict = {'PlanetarySource': False, 'ExomoonSource': False, 'DopplerPlanetRotation': False}
 
-print('\nWelcome to DISHOOM-ELITE! First, define if you want to make some fundamental simplifications.\n')
+print('\nWelcome to DISHOOM-PROMETHEUS! First, define if you want to make some fundamental simplifications.\n')
 
 
 fundamentalsDict['CLV_variations'] = read_str('Do you want to take center-to-limb variations into account?', ['yes', 'no'])
@@ -193,7 +193,7 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number']) == 'pressu
 
 
 if len(scenarioDict) == 0:
-    print('You have not added any absorption sources! Your loss. DISHOOM-ELITE exits now.')
+    print('You have not added any absorption sources! Your loss. DISHOOM-PROMETHEUS exits now.')
     sys.exit()
 
 
@@ -397,7 +397,7 @@ outputDict['recordTau'] = read_str('Do you want to record the optical depth for 
 Write parameter dictionary and store it as json file
 """
 
-print('\n\nAll parameters are stored! To run DISHOOM-ELITE, type <python main.py ' + paramsFilename + '>.\n\n')
+print('\n\nAll parameters are stored! To run DISHOOM-PROMETHEUS, type <python main.py ' + paramsFilename + '>.\n\n')
 
 parameters = {'Fundamentals': fundamentalsDict, 'Architecture': architectureDict, 'Scenarios': scenarioDict, 'Species': speciesDict, 'Grids': gridsDict, 'Output': outputDict}
 

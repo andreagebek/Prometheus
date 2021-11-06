@@ -9,7 +9,7 @@ import os
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 sys.path.append(GITPATH)
-import eliteScripts.constants as const
+import prometheusScripts.constants as const
 
 def getPlanetPosition(architectureDict, orbphase):
 

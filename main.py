@@ -12,17 +12,17 @@ SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(SCRIPTPATH)
 PARENTPATH = os.path.dirname(GITPATH)
 sys.path.append(GITPATH)
-import eliteScripts.constants as const
+import prometheusScripts.constants as const
 
 N_arguments = len(sys.argv)
 
 if N_arguments == 1:
 
-    import eliteScripts.setup
+    import prometheusScripts.setup
 
     sys.exit(0)
 
-import eliteScripts.fluxDecrease as flux
+import prometheusScripts.fluxDecrease as flux
 
 startTime = datetime.now()
 
@@ -85,7 +85,7 @@ if outputDict['recordTau']:
 
 elapsedTime = datetime.now() - startTime
 
-print("DISHOOM-ELITE finished, yay! Elapsed time is:", elapsedTime)
+print("DISHOOM-PROMETHEUS finished, yay! Elapsed time is:", elapsedTime)
 
 print("The maximal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.min(R)), 5)))
 
