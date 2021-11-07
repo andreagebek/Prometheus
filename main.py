@@ -90,3 +90,12 @@ print("DISHOOM-PROMETHEUS finished, yay! Elapsed time is:", elapsedTime)
 print("The maximal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.min(R)), 5)))
 
 print("The minimal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.max(R)), 5)))
+
+print(r"""
+             MMM8&&&.
+        _...MMMMM88&&&&..._
+    .::'''MMMMM88&&&&&&'''::.
+    ::    MMMMM88&&&&&&     ::
+   '::....MMMMM88&&&&&&....::'
+      `''''MMMMM88&&&&''''`
+            'MMM8&&&'""")
