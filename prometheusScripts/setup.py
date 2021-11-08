@@ -113,6 +113,11 @@ fundamentalsDict['CLV_variations'] = read_str('Do you want to take center-to-lim
 fundamentalsDict['RM_effect'] = read_str('Do you want to take the Rossiter-McLaughlin-Effect into account (note that this means that you \
 have to provide additional information about the host star to specifiy its spectrum)?', ['yes', 'no'])
 fundamentalsDict['DopplerOrbitalMotion'] = read_str('Do you want to consider the Doppler shifts due to planetary/exomoon orbital motion?', ['yes', 'no'])
+fundamentalsDict['ExactSigmaAbs'] = read_str('Do you want to calculate the absorption cross section exactly (NOT RECOMMENDED, makes the code very slow)?', ['yes', 'no'])
+
+if not fundamentalsDict['ExactSigmaAbs']:
+    fundamentalsDict['LookupResolution'] = read_value('Enter the resolution for the lookup table in Angstrom. Note that this effectively corresponds to a velocity resolution, \
+to resolve a velocity of 1 km/s at 6000 Angstrom a lookup table resolution of 0.02 Angstrom is needed.', 1e-5, 100, 1e-8)
 
 """
 Scenarios for the spatial distribution of the medium

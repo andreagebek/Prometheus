@@ -8,12 +8,16 @@ Created on 19. October 2021 by Andrea Gebek.
 import numpy as np
 import sys
 from scipy.special import erf, voigt_profile
+from scipy.interpolate import interp1d
 import os
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 sys.path.append(GITPATH)
 import prometheusScripts.constants as const
 import prometheusScripts.geometryHandler as geom
+import datetime
+
+startTime = datetime.datetime.now()
 
 """
 Number density functions
@@ -266,6 +270,30 @@ def calculateDopplerShift(v_los):
 
     return shift
 
+def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario, specificScenarioDict, speciesDict):
+
+    w_min = np.min(wavelength) * calculateDopplerShift(v_los_max)
+    w_max = np.max(wavelength) * calculateDopplerShift(-v_los_max)
+    wavelengthHighRes = np.arange(w_min, w_max, LookupResolution)
+
+    sigmaHighRes = 0
+
+    for key_species in speciesDict[key_scenario].keys():
+
+        line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
+
+        sigmaHighRes += calculateLineAbsorption(wavelengthHighRes, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
+
+
+    if 'RayleighScatt' in specificScenarioDict.keys():
+
+        if specificScenarioDict['RayleighScatt']:
+
+            sigmaHighRes += 8.49e-45 / wavelengthHighRes**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
+
+    return sigmaHighRes, wavelengthHighRes
+ 
+
 
 def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict):
     # Note that this absorption cross section is already multiplied by either the mixing ratio or the total number of absorbing atoms,
@@ -276,19 +304,30 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
     wavelengthShiftFactor = calculateDopplerShift(-v_los)
     wavelengthShifted = np.tensordot(wavelength, wavelengthShiftFactor, axes = 0)
 
-    sigma_abs = 0
+    if fundamentalsDict['ExactSigmaAbs']:
 
-    for key_species in speciesDict[key_scenario].keys():
+        sigma_abs = 0
 
-        line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
+        for key_species in speciesDict[key_scenario].keys():
 
-        sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
+            line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
+
+            sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
 
 
-    if 'RayleighScatt' in specificScenarioDict.keys():
+        if 'RayleighScatt' in specificScenarioDict.keys():
 
-        if specificScenarioDict['RayleighScatt']:
+            if specificScenarioDict['RayleighScatt']:
 
-            sigma_abs += 8.49e-45 / wavelengthShifted**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
+                sigma_abs += 8.49e-45 / wavelengthShifted**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
+
+    else:
+
+        v_los_max = np.max(np.abs(v_los))
+
+        sigmaHighRes, wavelengthHighRes = createLookupAbsorption(v_los_max, wavelength, fundamentalsDict['LookupResolution'], key_scenario, specificScenarioDict, speciesDict)
+
+        sigma_abs_function = interp1d(wavelengthHighRes, sigmaHighRes, kind = 'cubic')
+        sigma_abs = sigma_abs_function(wavelengthShifted)
 
     return sigma_abs
