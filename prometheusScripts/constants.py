@@ -21,26 +21,11 @@ euler_mascheroni = 0.57721
 AU = 1.496e13   # Conversion of one astronomical unit into cm
 
 """
-Masses for the absorbing species (this is not a really elegant way,
+Masses for the absorbing atoms/ions (this is not a really elegant way,
 but I couldn't find another solution yet)
 """
 
 speciesInfoDict = {'NaI': ['Na', '1', 22.99 * amu], 'KI': ['K', '1', 39.0983 * amu]}
-
-
-"""
-Parameters for the absorption lines and species (potentially combine this)
-Format: [Line intensity (cm/particle), Wavelength in vacuum (cm), HWHM of Lorentzian profile (Hz),
-mass of the absorber (g), name of the absorber]
-Na_D2, Na_D1: Draine 2011, Steck 2000
-K_D2, K_D1: Draine 2011, Tiecke 2011
-"""
-"""
-absorptionlines_dict = {'Na_D2': [5.66e-13, 5891.58e-8, 3.0771e7, m_Na, 'sodium'],
-'Na_D1': [2.82e-13, 5897.57e-8, 3.0677e7, m_Na, 'sodium'],
-'K_D2': [6.021e-13, 7667.01e-8, 2.978e6, m_K, 'potassium'],
-'K_D1': [3.002e-13, 7701.08e-8, 3.018e6, m_K, 'potassium']}
-"""
 
 """
 Planetary parameters
@@ -48,9 +33,11 @@ Format: [Stellar radius (cm), Stellar mass (g), Reference radius (cm), Planetary
 Stellar effective temperature (K), Stellar surface gravity (log10(cm/s^2)), Metallicity [Fe/H], Alpha-enhancement [alpha/Fe]]
 WASP-49b: Wyttenbach et al. 2017 (Metallicity from Sousa+ 2018, Alpha-enhancement unknown)
 HD189733b: Wyttenbach et al. 2015 (T_eff, log_g, and Metallicity from Chavero+ 2019, Alpha-enhancement unknown)
+55Cancri-e: Bourrier et al. 2018 (Alpha-enhancement unknown)
 """
 
 planetsDict = {'WASP-49b': [1.038 * R_sun, 1.003 * M_sun, 1.198 * R_J, 0.399 * M_J, 0.03873 * AU, 5600, 4.5, -0.08, 0],
-'HD189733b': [0.756 * R_sun, 0.823 * M_sun, 1.138 * R_J, 1.138 * M_J, 0.0312 * AU, 5201, 4.64, -0.02, 0]}
+'HD189733b': [0.756 * R_sun, 0.823 * M_sun, 1.138 * R_J, 1.138 * M_J, 0.0312 * AU, 5201, 4.64, -0.02, 0],
+'55Cancri-e': [0.943 * R_sun, 0.905 * M_sun, 0.16728 * R_J, 0.0251 * M_J, 0.01544 * AU, 5172, 4.43, 0.35, 0]}
 
 

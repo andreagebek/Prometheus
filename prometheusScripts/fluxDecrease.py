@@ -160,6 +160,10 @@ def calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, a
         sigma_abs = gasprop.getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict)
 
         n = np.tile(n, (len(wavelength), 1, 1, 1, 1))
+        
+        BLOCK = (n == np.inf)
+
+        sigma_abs[BLOCK] = 1.   # If sigma_abs = 0 and n = inf we have an issue for the calculation of tau
 
         tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)
 

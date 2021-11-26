@@ -8,8 +8,9 @@ Created on 19. October 2021 by Andrea Gebek.
 import numpy as np
 import sys
 from scipy.special import erf, voigt_profile
-from scipy.interpolate import interp1d
+from scipy.interpolate import interp1d, RegularGridInterpolator
 import os
+import h5py
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 sys.path.append(GITPATH)
@@ -228,7 +229,7 @@ Calculate absorption cross sections
 
 def readLineList(key_species, wavelength):
 
-    LineList = np.loadtxt(GITPATH + '/LineList.txt', dtype = str, usecols = (0, 1, 2, 3, 4), skiprows = 1)
+    LineList = np.loadtxt(GITPATH + '/Resources/LineList.txt', dtype = str, usecols = (0, 1, 2, 3, 4), skiprows = 1)
 
     line_wavelength = np.array([x[1:-1] for x in LineList[:, 2]])
     line_A = np.array([x[1:-1] for x in LineList[:, 3]])
@@ -246,6 +247,31 @@ def readLineList(key_species, wavelength):
 
     return line_wavelength[SEL_WAVELENGTH], line_gamma[SEL_WAVELENGTH], line_f[SEL_WAVELENGTH]
 
+def readMolecularAbsorption(key_species):
+    # Read a hdf5 file in TauREX format downloaded from the ExoMol project
+    # This file should contain temperature, pressure and wavelength grids,
+    # and aborption cross sections for this 3D-grids
+
+    with h5py.File(os.path.dirname(GITPATH) + '/molecularResources/' + key_species + '.h5', 'r+') as f:
+
+        P = f['p'][:] * 10 # TauREX format is in Pascal, convert to cgs-units
+        T = f['t'][:]   # Temperature in K
+        w = 1. / f['bin_edges'][:] # Wavelength in cm
+        sigma = f['xsecarr'][:] # Absorption cross section in cm^2/molecule
+
+        return P, T, w, sigma
+
+def calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, chi, key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict):
+
+    P_mol, T_mol, wavelength_mol, sigma_mol = readMolecularAbsorption(key_species)
+    sigma_mol_function = RegularGridInterpolator((P_mol, T_mol, wavelength_mol[::-1]), sigma_mol[:, :, ::-1], bounds_error = True)
+
+    T_spatialGrid = np.ones_like(x) * specificScenarioDict['T']
+    P_spatialGrid = const.k_B * T_spatialGrid * getNumberDensity(x, phi, rho, orbphase, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
+    T_grid = np.tile(np.clip(T_spatialGrid, np.min(T_mol), np.max(T_mol)), (np.size(wavelengthShifted, 0), 1, 1, 1, 1))
+    P_grid = np.tile(np.clip(P_spatialGrid, np.min(P_mol), np.max(P_mol)), (np.size(wavelengthShifted, 0), 1, 1, 1, 1))
+
+    return sigma_mol_function((np.clip(P_grid, np.min(P_mol), np.max(P_mol)), np.clip(T_grid, np.min(T_mol), np.max(T_mol)), wavelengthShifted)) * chi
 
 def calculateLineAbsorption(wavelength, line_wavelength, line_gamma, line_f, specificSpeciesDict):
 
@@ -276,13 +302,16 @@ def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario
     w_max = np.max(wavelength) * calculateDopplerShift(-v_los_max)
     wavelengthHighRes = np.arange(w_min, w_max, LookupResolution)
 
-    sigmaHighRes = 0
+    sigmaHighRes = np.zeros_like(wavelengthHighRes)
 
     for key_species in speciesDict[key_scenario].keys():
 
-        line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
 
-        sigmaHighRes += calculateLineAbsorption(wavelengthHighRes, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
+        if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
+
+            line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
+
+            sigmaHighRes += calculateLineAbsorption(wavelengthHighRes, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
 
 
     if 'RayleighScatt' in specificScenarioDict.keys():
@@ -293,7 +322,6 @@ def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario
 
     return sigmaHighRes, wavelengthHighRes
  
-
 
 def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict):
     # Note that this absorption cross section is already multiplied by either the mixing ratio or the total number of absorbing atoms,
@@ -310,10 +338,16 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
 
         for key_species in speciesDict[key_scenario].keys():
 
-            line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
+            if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
 
-            sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
+                line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
 
+                sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
+            
+            else:
+
+                sigma_abs += calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
+            
 
         if 'RayleighScatt' in specificScenarioDict.keys():
 
@@ -328,6 +362,12 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
         sigmaHighRes, wavelengthHighRes = createLookupAbsorption(v_los_max, wavelength, fundamentalsDict['LookupResolution'], key_scenario, specificScenarioDict, speciesDict)
 
         sigma_abs_function = interp1d(wavelengthHighRes, sigmaHighRes, kind = 'cubic')
-        sigma_abs = sigma_abs_function(wavelengthShifted)
+        sigma_abs = sigma_abs_function(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Clip because of rounding errors
+
+        for key_species in speciesDict[key_scenario].keys():
+
+            if not 'sigma_v' in speciesDict[key_scenario][key_species].keys():
+
+                sigma_abs += calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
 
     return sigma_abs

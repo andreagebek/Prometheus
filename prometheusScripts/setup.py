@@ -240,7 +240,7 @@ if systemname == '0':
         architectureDict['log_g'] = read_value('Enter the logarithmic value of the surface gravity in log10(cm/s^2):', 0, 6, 1, roundBorders = False, acceptLowerBorder = True, acceptUpperBorder = True)
         architectureDict['Fe_H'] = read_value('Enter the metallicity of the star [Fe/H]:', -4, 1, 1, roundBorders = False, acceptLowerBorder = True, acceptUpperBorder = True)
 
-        if Fe_H > -3.5 and Fe_H < 0.25: # The PHOENIX library has varying alpha-enhancement only for this metallicity range
+        if architectureDict['Fe_H'] > -3.5 and architectureDict['Fe_H'] < 0.25: # The PHOENIX library has varying alpha-enhancement only for this metallicity range
             architectureDict['alpha_Fe'] = read_value('Enter the alpha-enhancement of the star [alpha/Fe]:', -0.2, 1.2, 1, roundBorders = False, acceptLowerBorder = True, acceptUpperBorder = True)
         else:
             architectureDict['alpha_Fe'] = 0
@@ -307,60 +307,69 @@ Specify the absorption species.
 print('\nSpecify the absorbing species and their abundances.\n')
 
 
-PossibleAbsorbers = ['NaI', 'KI', '0']
+PossibleAbsorbers = ['NaI', 'KI', 'SO2', '0']
+PossibleEvaporativeAbsorbers = ['NaI', 'KI', '0']
 
 speciesDict = {}
 
-while True:
-    species = read_str('Enter the name of the absorbing species you want to consider, or 0 to move on:', PossibleAbsorbers)
 
-    if species == '0':
-        break
+for key_scenario in scenarioDict.keys():
+
+    speciesDict[key_scenario] = {}
+
+    if 'T' in scenarioDict[key_scenario].keys():
+
+        while True:
+
+            params = {}
+            key_species = read_str('Enter the name of the absorbing species you want to consider for the ' + key_scenario + ' scenario, or 0 to move on:', PossibleAbsorbers)
+
+            if key_species == '0':
+                break
+
+            else:
+
+                params['chi'] = read_value('Enter the mixing ratio of ' + key_species + ' in the ' + key_scenario + ' scenario:', 
+                0, 1, 1, acceptLowerBorder = True, acceptUpperBorder = True)
+
+            if scenarioDict[key_scenario]['thermBroad'] and key_species in PossibleEvaporativeAbsorbers: # Velocity dispersion only for atoms/ions
+
+                params['sigma_v'] = np.sqrt(const.k_B * scenarioDict[key_scenario]['T'] / const.speciesInfoDict[key_species][2])
+
+            elif not scenarioDict[key_scenario]['thermBroad'] and key_species in PossibleEvaporativeAbsorbers:
+
+                params['sigma_v'] = 0
+
+            speciesDict[key_scenario][key_species] = params
+            PossibleAbsorbers.remove(key_species)
 
     else:
 
-        for key_scenario in scenarioDict.keys():
+        while True:
 
-            if key_scenario not in speciesDict.keys():
-                speciesDict[key_scenario] = {}
-
-            speciesDict[key_scenario][species] = {}
-
-        PossibleAbsorbers.remove(species)
-
-
-for key_scenario in speciesDict.keys():
-
-    for key_species in speciesDict[key_scenario].keys():
-
-        params = {}
-
-        if 'P_0' in scenarioDict[key_scenario].keys():
-
-            params['chi'] = read_value('Enter the mixing ratio of ' + key_species + ' in the ' + key_scenario + ' scenario:', 
-            0, 1, 1, acceptLowerBorder = True, acceptUpperBorder = True)
-                
-        else:
-
-            params['chi'] = read_value('Enter the number of absorbing ' + key_species + ' atoms in the ' + key_scenario + ' scenario:', 
-            0, 1e50, 1, acceptLowerBorder = True, acceptUpperBorder = True)
-
-        if scenarioDict[key_scenario]['thermBroad']:
-
-            if 'T' in scenarioDict[key_scenario].keys():
-
-                params['sigma_v'] = np.sqrt(const.k_B * scenarioDict[key_scenario]['T'] / const.speciesInfoDict[key_species][2])
+            params = {}
+            key_species = read_str('Enter the name of the absorbing species you want to consider for the ' + key_scenario + ' scenario, or 0 to move on:', PossibleEvaporativeAbsorbers)
             
-            else:   
+            if key_species == '0':
+                break
+
+            else:
+
+                params['chi'] = read_value('Enter the number of absorbing ' + key_species + ' atoms/ions in the ' + key_scenario + ' scenario:', 
+                0, 1e50, 1, acceptLowerBorder = True, acceptUpperBorder = True)
+
+
+            if scenarioDict[key_scenario]['thermBroad']:
 
                 params['sigma_v'] = read_value('Enter the pseudo-thermal velocity dispersion (sigma_v = sqrt(k_B * T / m))  of ' + key_species + ' in the ' + key_scenario + ' \
 scenario in km/s:', 1e-3, 1e5, 1e5)
-   
-        else:
 
-            params['sigma_v'] = 0
+            else:
 
-        speciesDict[key_scenario][key_species] = params
+                params['sigma_v'] = 0
+
+            speciesDict[key_scenario][key_species] = params
+            PossibleEvaporativeAbsorbers.remove(key_species)
 
 
 
