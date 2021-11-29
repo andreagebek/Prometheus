@@ -42,7 +42,7 @@ speciesDict = param['Species']
 gridsDict = param['Grids']
 outputDict = param['Output']
 
-resultsDict = flux.calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict)
+resultsDict = flux.calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime)
 R = resultsDict['R'].flatten()
 
 """
@@ -91,11 +91,14 @@ print("The maximal flux decrease due to atmospheric/exospheric absorption in per
 
 print("The minimal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.max(R)), 5)))
 
+
 print(r"""
-             MMM8&&&.
-        _...MMMMM88&&&&..._
-    .::'''MMMMM88&&&&&&'''::.
-    ::    MMMMM88&&&&&&     ::
-   '::....MMMMM88&&&&&&....::'
-      `''''MMMMM88&&&&''''`
-            'MMM8&&&'""")
+ *******  *******           ,/MMM8&&&.         ****     **** ******** ********** **      ** ******** **     **  ********
+/**////**/**////**     _...MMMMM88&&&&..._    /**/**   **/**/**///// /////**/// /**     /**/**///// /**    /** **////// 
+/**   /**/**   /**   .:'''MMMMM88&&&&&&''':.  /**//** ** /**/**          /**    /**     /**/**      /**    /**/**       
+/******* /*******   :     MMMMM88&&&&&&     : /** //***  /**/*******     /**    /**********/******* /**    /**/*********
+/**////  /**///**    ':...MMMMM88&&&&&&....:  /**  //*   /**/**////      /**    /**//////**/**////  /**    /**////////**
+/**      /**  //**      `''MMMMM88&&&&'''`    /**   /    /**/**          /**    /**     /**/**      /**    /**       /**
+/**      /**   //**         'MMM8&&&'         /**        /**/********    /**    /**     /**/********//*******  ******** 
+//       //     //                            //         // ////////     //     //      // ////////  ///////  ////////  
+""")

@@ -296,7 +296,7 @@ def calculateDopplerShift(v_los):
 
     return shift
 
-def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario, specificScenarioDict, speciesDict):
+def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario, specificScenarioDict, speciesDict, startTime):
 
     w_min = np.min(wavelength) * calculateDopplerShift(v_los_max)
     w_max = np.max(wavelength) * calculateDopplerShift(-v_los_max)
@@ -310,9 +310,9 @@ def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario
         if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
 
             line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
-
+            print(key_species + ' line parameters read-in for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
             sigmaHighRes += calculateLineAbsorption(wavelengthHighRes, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
-
+            print('Absorption cross section calculation due to ' + key_species + ' in the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
 
     if 'RayleighScatt' in specificScenarioDict.keys():
 
@@ -323,7 +323,7 @@ def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario
     return sigmaHighRes, wavelengthHighRes
  
 
-def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict):
+def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, startTime):
     # Note that this absorption cross section is already multiplied by either the mixing ratio or the total number of absorbing atoms,
     # hence it doesn't reflect the bare absorption cross section per particle
 
@@ -341,13 +341,14 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
             if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
 
                 line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
-
+                print(key_species + ' line parameters read-in for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
                 sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
+                print('Absorption cross section calculation due to ' + key_species + ' in the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
             
             else:
 
                 sigma_abs += calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
-            
+                print('Absorption cross section calculation due to ' + key_species + ' in the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)           
 
         if 'RayleighScatt' in specificScenarioDict.keys():
 
@@ -359,7 +360,7 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
 
         v_los_max = np.max(np.abs(v_los))
 
-        sigmaHighRes, wavelengthHighRes = createLookupAbsorption(v_los_max, wavelength, fundamentalsDict['LookupResolution'], key_scenario, specificScenarioDict, speciesDict)
+        sigmaHighRes, wavelengthHighRes = createLookupAbsorption(v_los_max, wavelength, fundamentalsDict['LookupResolution'], key_scenario, specificScenarioDict, speciesDict, startTime)
 
         sigma_abs_function = interp1d(wavelengthHighRes, sigmaHighRes, kind = 'cubic')
         sigma_abs = sigma_abs_function(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Clip because of rounding errors
@@ -369,5 +370,6 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
             if not 'sigma_v' in speciesDict[key_scenario][key_species].keys():
 
                 sigma_abs += calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
-
+                print('Absorption cross section calculation due to ' + key_species + ' in the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)           
+    
     return sigma_abs

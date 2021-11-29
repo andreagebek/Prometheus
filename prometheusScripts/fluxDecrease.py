@@ -7,6 +7,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import sys
 import os
+import datetime
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 sys.path.append(GITPATH) 
@@ -145,20 +146,20 @@ def getStarFactors(wavelength, fundamentalsDict, architectureDict, gridsDict):
 
 
 
-def calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict):
+def calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime):
 
     delta_x = 2 * gridsDict['x_border'] / float(gridsDict['x_steps'])
 
     tau = 0
 
     for key_scenario in scenarioDict.keys():
-
+        print('\nOptical depth calculation for the ' + key_scenario + ' scenario starting:', datetime.datetime.now() - startTime)
         specificScenarioDict = scenarioDict[key_scenario]
 
         n = gasprop.getNumberDensity(x, phi, rho, orbphase, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)     
-
-        sigma_abs = gasprop.getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict)
-
+        print('Number density calculation for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
+        sigma_abs = gasprop.getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, startTime)
+        print('Total absorption cross section calculation for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
         n = np.tile(n, (len(wavelength), 1, 1, 1, 1))
         
         BLOCK = (n == np.inf)
@@ -166,26 +167,27 @@ def calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, a
         sigma_abs[BLOCK] = 1.   # If sigma_abs = 0 and n = inf we have an issue for the calculation of tau
 
         tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)
-
+        print('Optical depth calculation for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime, '\n')
     return tau # tau(lambda, phi, rho, t)
 
 
-def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict):
+def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime):
     """Calculate the wavelength-dependent transit depth
     """
 
     x, phi, rho, orbphase = constructSpatialGrid(gridsDict, architectureDict)
 
     wavelength = constructAxis(gridsDict, architectureDict, 'wavelength')
-    
-    tau = calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict)
-    singleChord = np.exp(-tau)
 
+    tau = calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime)
+    print('Total optical depth calculated:', datetime.datetime.now() - startTime)
+    singleChord = np.exp(-tau)
 
     delta_rho = architectureDict['R_star'] / float(gridsDict['rho_steps'])
     delta_phi = 2 * np.pi / float(gridsDict['phi_steps'])
 
     F_star_untiled, F_star_integrated = getStarFactors(wavelength, fundamentalsDict, architectureDict, gridsDict)
+    print('Calculations with the stellar flux finished:', datetime.datetime.now() - startTime)
     F_star_tiled = np.tile(F_star_untiled, (int(gridsDict['orbphase_steps']), 1, 1, 1))
     F_star = np.moveaxis(F_star_tiled, 0, -1) # F_star(lambda, phi, rho, orbphase)
 
@@ -208,6 +210,7 @@ def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, spec
     if outputDict['benchmark']:
 
         R_benchmark = calculateBarometricBenchmark(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict['barometric'], speciesDict)
+        print('Benchmark transit spectrum calculated:', datetime.datetime.now() - startTime)
 
         resultsDict['R_benchmark'] = R_benchmark
 
