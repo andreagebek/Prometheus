@@ -126,7 +126,14 @@ or save an mp4 movie for each species if there is a time dependency
 
 if gridsDict['orbphase_steps'] == 1: 
 
-    fig, axes = plt.subplots(figsize=(2 + 10 * N_species, 8), nrows = 1, ncols = N_species)
+    if N_species > 1:
+        
+        fig, axes = plt.subplots(figsize=(2 + 10 * N_species, 8), nrows = 1, ncols = N_species)
+    
+    else:
+
+        fig = plt.figure(figsize = (10, 8))
+        axes = [fig.add_subplot(111)]
 
     for idx, ax in enumerate(axes):
 
