@@ -3,6 +3,9 @@ Author: Andrea Gebek
 Created on 4.12.2021
 Plot the total line-of-sight column density
 (between star and observer) of each absorbing species.
+If there is a time-dependency (i.e. multiple orbital
+phases), create an mp4 movie. Note that for mp4
+movies you need the ffmpeg program.
 """
 
 import numpy as np
@@ -12,6 +15,7 @@ import json
 import sys
 import os
 from mpl_toolkits import axes_grid1
+import matplotlib.animation as animation
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 PARENTPATH = os.path.dirname(GITPATH)
@@ -19,7 +23,9 @@ sys.path.append(GITPATH)
 import prometheusScripts.geometryHandler as geom
 import prometheusScripts.gasProperties as gasprop
 import prometheusScripts.fluxDecrease as flux
+import datetime
 
+startTime = datetime.datetime.now()
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
@@ -92,7 +98,7 @@ for key_species in n_speciesDict.keys():
 
 
 """
-Plot the column for each species in a different panel
+Prepare quantities for the plots
 """
 
 def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs): # Add colorbar to a plot which matches the graph size
@@ -113,39 +119,88 @@ y, z = geom.getCartesianFromCylinder(0, phi, rho)[1:] # x is not used here
 y = y[0, :, :, 0].flatten() # Create a 1D-array with all the different y-coordinates of the 2D-grid (ignore x-coordinate and orbital phase)
 z = z[0, :, :, 0].flatten() # Same for z-coordinate
 
-fig, axes = plt.subplots(figsize=(2 + 10 * N_species, 8), nrows = 1, ncols = N_species)
+"""
+Plot single figure if there is no time dependency,
+or save an mp4 movie for each species if there is a time dependency
+"""
 
-for idx, ax in enumerate(axes):
+if gridsDict['orbphase_steps'] == 1: 
 
-    column = N_speciesDict[speciesList[idx]].flatten()
+    fig, axes = plt.subplots(figsize=(2 + 10 * N_species, 8), nrows = 1, ncols = N_species)
+
+    for idx, ax in enumerate(axes):
+
+        column = N_speciesDict[speciesList[idx]].flatten()
 
 
-    with np.errstate(divide = 'ignore'):
-        im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = 5, s = 2, cmap = 'Spectral_r')
+        with np.errstate(divide = 'ignore'):
+            im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = 5, s = 2, cmap = 'Spectral_r')
+        
+        if plotPlanet:
+            planetCircle = plt.Circle((0, 0), 1, color = 'black', linewidth = 0)
+            ax.add_patch(planetCircle)
+
+        if plotStar:
+            starCircle = plt.Circle((0, 0), R_star / R_0, color = 'black', fill = False, linewidth = 1)
+            ax.add_patch(starCircle)
+
+        cbar = add_colorbar(im, ax = ax)
+        cbar.set_label(r'$\log_{10}(N_\mathrm{los})\,[$' + speciesList[idx] + r'$\,\mathrm{cm}^{-2}]$')
+        cbar.ax.minorticks_on()
+
+        ax.set_xlabel(r'$y\,[R_0]$')
+        ax.set_ylabel(r'$z\,[R_0]$')
+
+        ax.set_xlim(-1.05 * R_star / R_0, 1.05 * R_star / R_0)
+        ax.set_ylim(-1.05 * R_star / R_0, 1.05 * R_star / R_0)
+
+        ax.set_aspect('equal', adjustable='box')
+
+        ax.minorticks_on()
+        ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
+
+    plt.tight_layout()
+
+    plt.savefig(PARENTPATH + '/figures/' + paramsFilename + '_columnPlot.pdf', dpi = 50)
+
+
+
+else:
     
-    if plotPlanet:
-        planetCircle = plt.Circle((0, 0), 1, color = 'black', linewidth = 0)
-        ax.add_patch(planetCircle)
+    for idx1 in range(N_species):
 
-    if plotStar:
-        starCircle = plt.Circle((0, 0), R_star / R_0, color = 'black', fill = False, linewidth = 1)
-        ax.add_patch(starCircle)
+        fig = plt.figure(figsize = (10, 8))
+        ax = fig.add_subplot(111)
 
-    cbar = add_colorbar(im, ax = ax)
-    cbar.set_label(r'$\log_{10}(N_\mathrm{los})\,[$' + speciesList[idx] + r'$\,\mathrm{cm}^{-2}]$')
-    cbar.ax.minorticks_on()
+        ims = []
 
-    ax.set_xlabel(r'$y\,[R_0]$')
-    ax.set_ylabel(r'$z\,[R_0]$')
+        max_column = np.max(np.ma.masked_invalid(N_speciesDict[speciesList[idx1]])) # Ignore inf values
 
-    ax.set_xlim(-1.05 * R_star / R_0, 1.05 * R_star / R_0)
-    ax.set_ylim(-1.05 * R_star / R_0, 1.05 * R_star / R_0)
+        for idx2 in range(gridsDict['orbphase_steps']):
 
-    ax.set_aspect('equal', adjustable='box')
+            column = N_speciesDict[speciesList[idx1]][:, :, idx2].flatten()
 
-    ax.minorticks_on()
-    ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
+            with np.errstate(divide = 'ignore'):
+                im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = 5, vmax = np.log10(max_column), s = 2, cmap = 'Spectral_r', animated = True)
 
-plt.tight_layout()
+            if idx2 == 0: # Else the colorbar is added to every single frame and the program takes FOREVER to execute
+                cbar = add_colorbar(im, ax = ax)
+                cbar.set_label(r'$\log_{10}(N_\mathrm{los})\,[$' + speciesList[idx1] + r'$\,\mathrm{cm}^{-2}]$')
+                cbar.ax.minorticks_on()
 
-plt.savefig(PARENTPATH + '/figures/' + paramsFilename + '_columnPlot.pdf', dpi = 50)
+            ax.set_xlabel(r'$y\,[R_0]$')
+            ax.set_ylabel(r'$z\,[R_0]$')
+
+            ax.set_xlim(-1.05 * R_star / R_0, 1.05 * R_star / R_0)
+            ax.set_ylim(-1.05 * R_star / R_0, 1.05 * R_star / R_0)
+
+            ax.set_aspect('equal', adjustable='box')
+
+            ax.minorticks_on()
+            ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
+
+            ims.append([im])
+
+        ani = animation.ArtistAnimation(fig, ims, interval = 50, blit = True, repeat_delay = 1000)
+        writervideo = animation.FFMpegWriter(fps=60)
+        ani.save(PARENTPATH + '/figures/' + paramsFilename + '_' + speciesList[idx1] + 'columnMovie.mp4', writer = writervideo)
