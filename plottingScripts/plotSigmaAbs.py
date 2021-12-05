@@ -11,6 +11,7 @@ import matplotlib
 import json
 import sys
 import os
+from scipy.interpolate import RegularGridInterpolator
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 PARENTPATH = os.path.dirname(GITPATH)
@@ -39,6 +40,7 @@ Read in settings file and calculate the absorption cross section
 plotRayleighScatt = True
 
 T = 1000 # Temperature in K to get velocity dispersion
+P = 1e0 # Pressure in cgs units (for molecular absorption), 1 bar is 1e6 barye (cgs-unit) 
 
 paramsFilename = sys.argv[1]
 
@@ -52,24 +54,45 @@ speciesDict = param['Species']
 wavelength = flux.constructAxis(gridsDict, architectureDict, 'wavelength')
 
 sigmaAbsSpecies = []
-labelList = []
+evaporativeSpeciesList = [] # Atoms/Ions
+molecularSpeciesList = [] # Molecules
 
-key_scenario = list(speciesDict.keys())[0] # First scenario key in the species dictionary (we don't need the other ones)
+for key_scenario in speciesDict.keys():
 
-for key_species in speciesDict[key_scenario].keys():
+    for key_species in speciesDict[key_scenario].keys():
+
+        if not key_species in evaporativeSpeciesList and 'sigma_v' in speciesDict[key_scenario][key_species].keys():
+
+            evaporativeSpeciesList.append(key_species)
+
+        if not key_species in molecularSpeciesList and not 'sigma_v' in speciesDict[key_scenario][key_species].keys():
+
+            molecularSpeciesList.append(key_species)
+
+labelList = evaporativeSpeciesList + molecularSpeciesList
+
+for key_species in evaporativeSpeciesList:
 
     sigma_v = np.sqrt(const.k_B * T / const.speciesInfoDict[key_species][2])
-
 
     line_wavelength, line_gamma, line_f = gasprop.readLineList(key_species, wavelength)
     sigmaAbsSpecies.append(gasprop.calculateLineAbsorption(wavelength, line_wavelength, line_gamma, line_f, {'chi': 1., 'sigma_v': sigma_v}))
 
     labelList.append(key_species)
 
+for key_species in molecularSpeciesList:
+
+    P_mol, T_mol, wavelength_mol, sigma_mol = gasprop.readMolecularAbsorption(key_species)
+
+    sigma_mol_function = RegularGridInterpolator((P_mol, T_mol, wavelength_mol[::-1]), sigma_mol[:, :, ::-1], bounds_error = False, fill_value = 0.)
+
+    sigma_mol = sigma_mol_function((P, T, wavelength))
+
+    sigmaAbsSpecies.append(sigma_mol)
+
 """
 Plot the absorption cross section and store the figure
 """
-
 
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111)

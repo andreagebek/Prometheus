@@ -264,7 +264,7 @@ def readMolecularAbsorption(key_species):
 def calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, chi, key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict):
 
     P_mol, T_mol, wavelength_mol, sigma_mol = readMolecularAbsorption(key_species)
-    sigma_mol_function = RegularGridInterpolator((P_mol, T_mol, wavelength_mol[::-1]), sigma_mol[:, :, ::-1], bounds_error = True)
+    sigma_mol_function = RegularGridInterpolator((P_mol, T_mol, wavelength_mol[::-1]), sigma_mol[:, :, ::-1], bounds_error = False, fill_value = 0.)
 
     T_spatialGrid = np.ones_like(x) * specificScenarioDict['T']
     P_spatialGrid = const.k_B * T_spatialGrid * getNumberDensity(x, phi, rho, orbphase, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
@@ -278,7 +278,7 @@ def calculateLineAbsorption(wavelength, line_wavelength, line_gamma, line_f, spe
     chi = specificSpeciesDict['chi']
     sigma_v = specificSpeciesDict['sigma_v']
 
-    sigma_abs_species = 0
+    sigma_abs_species = np.zeros_like(wavelength)
 
     for idx in range(len(line_wavelength)):
 
