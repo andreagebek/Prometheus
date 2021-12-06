@@ -183,7 +183,7 @@ else:
 
         max_column = np.max(np.ma.masked_invalid(N_speciesDict[speciesList[idx1]])) # Ignore inf values
 
-        for idx2 in range(gridsDict['orbphase_steps']):
+        for idx2 in range(int(gridsDict['orbphase_steps'])):
 
             column = N_speciesDict[speciesList[idx1]][:, :, idx2].flatten()
 
