@@ -291,6 +291,10 @@ def calculateLineAbsorption(wavelength, line_wavelength, line_gamma, line_f, spe
 def calculateDopplerShift(v_los):
     # If v_los is positive, receiver and source are moving towards each other
 
+    if np.any(np.abs(v_los) >= const.c):
+        print('\nCRITICAL ERROR: Velocities of the gas in the simulation exceed speed of light. PROMETHEUS exits now.')
+        sys.exit()
+
     beta = v_los / const.c
     shift = np.sqrt((1. - beta) / (1. + beta))
 
