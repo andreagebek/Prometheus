@@ -23,9 +23,6 @@ sys.path.append(GITPATH)
 import prometheusScripts.geometryHandler as geom
 import prometheusScripts.gasProperties as gasprop
 import prometheusScripts.fluxDecrease as flux
-import datetime
-
-startTime = datetime.datetime.now()
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
@@ -141,7 +138,7 @@ if gridsDict['orbphase_steps'] == 1:
 
 
         with np.errstate(divide = 'ignore'):
-            im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = 5, s = 2, cmap = 'Spectral_r')
+            im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = max(5, np.log10(np.min(column))), s = 2, cmap = 'Spectral_r')
         
         if plotPlanet:
             planetCircle = plt.Circle((0, 0), 1, color = 'black', linewidth = 0)
@@ -182,13 +179,14 @@ else:
         ims = []
 
         max_column = np.max(np.ma.masked_invalid(N_speciesDict[speciesList[idx1]])) # Ignore inf values
+        min_column = np.min(np.ma.masked_invalid(N_speciesDict[speciesList[idx1]]))
 
         for idx2 in range(int(gridsDict['orbphase_steps'])):
 
             column = N_speciesDict[speciesList[idx1]][:, :, idx2].flatten()
 
             with np.errstate(divide = 'ignore'):
-                im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = 5, vmax = np.log10(max_column), s = 2, cmap = 'Spectral_r', animated = True)
+                im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = max(5, np.log10(min_column)), vmax = np.log10(max_column), s = 2, cmap = 'Spectral_r', animated = True)
 
             if idx2 == 0: # Else the colorbar is added to every single frame and the program takes FOREVER to execute
                 cbar = add_colorbar(im, ax = ax)
