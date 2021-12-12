@@ -33,11 +33,11 @@ Format: [Stellar radius (cm), Stellar mass (g), Reference radius (cm), Planetary
 Stellar effective temperature (K), Stellar surface gravity (log10(cm/s^2)), Metallicity [Fe/H], Alpha-enhancement [alpha/Fe]]
 WASP-49b: Wyttenbach et al. 2017 (Metallicity from Sousa+ 2018, Alpha-enhancement unknown)
 HD189733b: Wyttenbach et al. 2015 (T_eff, log_g, and Metallicity from Chavero+ 2019, Alpha-enhancement unknown)
-55Cancri-e: Bourrier et al. 2018 (Alpha-enhancement unknown)
+55Cancri-e: Crida et al. 2018 (a_p, T_eff, log_g, and Metallcity from Bourrier+ 2018, Alpha-enhancement unknown) 
 """
 
 planetsDict = {'WASP-49b': [1.038 * R_sun, 1.003 * M_sun, 1.198 * R_J, 0.399 * M_J, 0.03873 * AU, 5600, 4.5, -0.08, 0],
 'HD189733b': [0.756 * R_sun, 0.823 * M_sun, 1.138 * R_J, 1.138 * M_J, 0.0312 * AU, 5201, 4.64, -0.02, 0],
-'55Cancri-e': [0.943 * R_sun, 0.905 * M_sun, 0.16728 * R_J, 0.0251 * M_J, 0.01544 * AU, 5172, 4.43, 0.35, 0]}
+'55Cancri-e': [0.98 * R_sun, 1.015 * M_sun, 0.1737 * R_J, 0.02703 * M_J, 0.01544 * AU, 5172, 4.43, 0.35, 0]}
 
 
