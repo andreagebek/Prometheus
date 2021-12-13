@@ -309,8 +309,12 @@ Specify the absorption species.
 print('\nSpecify the absorbing species and their abundances.\n')
 
 
-PossibleAbsorbers = ['NaI', 'KI', 'SO2', '0']
-PossibleEvaporativeAbsorbers = ['NaI', 'KI', '0']
+PossibleAtomicAbsorbers = list(const.speciesInfoDict.keys())
+PossibleAtomicAbsorbers.append('0')
+
+PossibleAbsorbers = list(const.speciesInfoDict.keys())
+PossibleAbsorbers.extend(['SO2', '0'])
+
 
 speciesDict = {}
 
@@ -334,11 +338,11 @@ for key_scenario in scenarioDict.keys():
                 params['chi'] = read_value('Enter the mixing ratio of ' + key_species + ' in the ' + key_scenario + ' scenario:', 
                 0, 1, 1, acceptLowerBorder = True, acceptUpperBorder = True)
 
-            if scenarioDict[key_scenario]['thermBroad'] and key_species in PossibleEvaporativeAbsorbers: # Velocity dispersion only for atoms/ions
+            if scenarioDict[key_scenario]['thermBroad'] and key_species in PossibleAtomicAbsorbers: # Velocity dispersion only for atoms/ions
 
                 params['sigma_v'] = np.sqrt(const.k_B * scenarioDict[key_scenario]['T'] / const.speciesInfoDict[key_species][2])
 
-            elif not scenarioDict[key_scenario]['thermBroad'] and key_species in PossibleEvaporativeAbsorbers:
+            elif not scenarioDict[key_scenario]['thermBroad'] and key_species in PossibleAtomicAbsorbers:
 
                 params['sigma_v'] = 0
 
@@ -350,7 +354,7 @@ for key_scenario in scenarioDict.keys():
         while True:
 
             params = {}
-            key_species = read_str('Enter the name of the absorbing species you want to consider for the ' + key_scenario + ' scenario, or 0 to move on:', PossibleEvaporativeAbsorbers)
+            key_species = read_str('Enter the name of the absorbing species you want to consider for the ' + key_scenario + ' scenario, or 0 to move on:', PossibleAtomicAbsorbers)
             
             if key_species == '0':
                 break
@@ -371,7 +375,7 @@ scenario in km/s:', 1e-3, 1e5, 1e5)
                 params['sigma_v'] = 0
 
             speciesDict[key_scenario][key_species] = params
-            PossibleEvaporativeAbsorbers.remove(key_species)
+            PossibleAtomicAbsorbers.remove(key_species)
 
 
 

@@ -25,7 +25,8 @@ Masses for the absorbing atoms/ions (this is not a really elegant way,
 but I couldn't find another solution yet)
 """
 
-speciesInfoDict = {'NaI': ['Na', '1', 22.99 * amu], 'KI': ['K', '1', 39.0983 * amu]}
+speciesInfoDict = {'NaI': ['Na', '1', 22.99 * amu], 'KI': ['K', '1', 39.0983 * amu], 'SiI': ['Si', '1', 28.0855 * amu], 'SiII': ['Si', '2', 28.0855 * amu],
+'SiIII': ['Si', '3', 28.0855 * amu], 'SiIV': ['Si', '4', 28.0855 * amu], 'MgI': ['Mg', '1', 24.305 * amu], 'MgII': ['Mg', '2', 24.305 * amu]}
 
 """
 Planetary parameters
