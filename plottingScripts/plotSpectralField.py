@@ -59,8 +59,7 @@ fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111)
 
 cmap = matplotlib.cm.get_cmap('Accent')
-
-im = ax.pcolormesh(wavelength * 1e8, orbphase / 2 * np.pi, R, cmap = 'Spectral')
+im = ax.pcolormesh(wavelength * 1e8, orbphase / (2. * np.pi), R, cmap = 'Spectral')
 
 cbar = fig.colorbar(im, ax = ax)
 cbar.set_label(r'$\Re$')

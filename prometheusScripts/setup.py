@@ -1,6 +1,6 @@
 """
 Run a question and answer session and store a settings.txt 
-file to run DISHOOM-PROMETHEUS.
+file to run PROMETHEUS.
 Created on 2. June 2021 by Andrea Gebek.
 """
 
@@ -108,7 +108,7 @@ print(r"""
 //       //     //                            //         // ////////     //     //      // ////////  ///////  ////////  
 """)
 
-print('\nWelcome to DISHOOM-PROMETHEUS! First, define if you want to make some fundamental simplifications.\n')
+print('\nWelcome to PROMETHEUS! First, define if you want to make some fundamental simplifications.\n')
 
 
 fundamentalsDict['CLV_variations'] = read_str('Do you want to take center-to-limb variations into account?', ['yes', 'no'])
@@ -209,7 +209,7 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number']) == 'pressu
 
 
 if len(scenarioDict) == 0:
-    print('You have not added any absorption sources! Your loss. DISHOOM-PROMETHEUS exits now.')
+    print('You have not added any absorption sources! Your loss. PROMETHEUS exits now.')
     sys.exit()
 
 
@@ -427,7 +427,7 @@ outputDict['recordTau'] = read_str('Do you want to record the optical depth for 
 Write parameter dictionary and store it as json file
 """
 
-print('\n\nAll parameters are stored! To run DISHOOM-PROMETHEUS, type <python main.py ' + paramsFilename + '>.\n\n')
+print('\n\nAll parameters are stored! To run PROMETHEUS, type <python main.py ' + paramsFilename + '>.\n\n')
 
 print(r"""
  *******  *******           ,/MMM8&&&.         ****     **** ******** ********** **      ** ******** **     **  ********
