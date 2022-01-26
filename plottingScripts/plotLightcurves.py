@@ -42,7 +42,7 @@ architectureDict = param['Architecture']
 gridsDict = param['Grids']
 
 wavelength = flux.constructAxis(gridsDict, architectureDict, 'wavelength')
-orbphase = flux.constructAxis(gridsDict, architectureDict, 'orbphase')
+orbphase = flux.constructAxis(gridsDict, architectureDict, 'orbphase') / (2. * np.pi) # Convert from Radiant to unity
 
 
 LightcurveFile = np.loadtxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt')
