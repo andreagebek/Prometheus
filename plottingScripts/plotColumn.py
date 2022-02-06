@@ -40,7 +40,6 @@ matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 Read in settings file
 """
 
-plotPlanet = False
 plotStar = True
 
 paramsFilename = sys.argv[1]
@@ -93,7 +92,6 @@ for key_species in n_speciesDict.keys():
     N_speciesDict[key_species] = delta_x * np.sum(n_speciesDict[key_species], axis = 0)
     speciesList.append(key_species)
 
-
 """
 Prepare quantities for the plots
 """
@@ -140,10 +138,6 @@ if gridsDict['orbphase_steps'] == 1:
         with np.errstate(divide = 'ignore'):
             im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = max(5, np.log10(np.min(column))), s = 2, cmap = 'Spectral_r')
         
-        if plotPlanet:
-            planetCircle = plt.Circle((0, 0), 1, color = 'black', linewidth = 0)
-            ax.add_patch(planetCircle)
-
         if plotStar:
             starCircle = plt.Circle((0, 0), R_star / R_0, color = 'black', fill = False, linewidth = 1)
             ax.add_patch(starCircle)
@@ -193,6 +187,10 @@ else:
                 cbar.set_label(r'$\log_{10}(N_\mathrm{los})\,[$' + speciesList[idx1] + r'$\,\mathrm{cm}^{-2}]$')
                 cbar.ax.minorticks_on()
 
+                if plotStar:
+                    starCircle = plt.Circle((0, 0), R_star / R_0, color = 'black', fill = False, linewidth = 1)
+                    ax.add_patch(starCircle)
+            
             ax.set_xlabel(r'$y\,[R_0]$')
             ax.set_ylabel(r'$z\,[R_0]$')
 
@@ -207,5 +205,5 @@ else:
             ims.append([im])
 
         ani = animation.ArtistAnimation(fig, ims, interval = 50, blit = True, repeat_delay = 1000)
-        writervideo = animation.FFMpegWriter(fps=60)
+        writervideo = animation.FFMpegWriter(fps=6)
         ani.save(PARENTPATH + '/figures/' + paramsFilename + '_' + speciesList[idx1] + 'columnMovie.mp4', writer = writervideo)
