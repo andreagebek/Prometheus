@@ -57,7 +57,7 @@ wavelength = wavelength.flatten()
 orbphase = orbphase.flatten()
 
 
-header = 'Wavelength grid (Å), Orbital phase grid, R'
+header = 'Wavelength grid (Å), Orbital phase grid [rad], R'
 
 np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt', np.array([wavelength, orbphase, R]).T, header = header)
 
