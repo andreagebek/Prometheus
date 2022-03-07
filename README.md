@@ -1,8 +1,11 @@
 # PROMETHEUS
 PRObing Mass loss in Exoplanetary Transits with Hydrostatic, Evaporative and User-defined Scenarios.
 PROMETHEUS is a radiative transfer tool to compute lightcurves and transmission spectra of an object
-transiting its host star, typically an exoplanet. The code calculates the amount of an absorption during
-the transit for gaseous media in arbitrary geometry.
+transiting its host star, typically an exoplanet. The code calculates the amount of absorption during
+the transit for gaseous media in arbitrary geometry. PROMETHEUS supports various density profiles
+beyond the canonical hydrostatic (barometric) law for dense atmospheres, such as the outgassed
+cloud of an exomoon or a circumplanetary torus. For these tenuous exospheres, line absorption
+by various atoms and ions is considered (with line lists from NIST).
 
 ## Installation
 Note that this code is written in python 3.8.3. Compatibility testing has so far been very limited.
@@ -13,18 +16,25 @@ as well as subfolders for txt files and figures created when performing a PROMET
 4. Optional: If you want to include molecular line absorption (currently, only sulfur dioxide is supported), create an additional 
 subfolder in the Prometheus folder named molceularResources: ```mkdir molecularResources```. Download the sulfur dioxide line list
 in TauRex format from the ExoMOL database under https://www.exomol.com/data/molecules/SO2/32S-16O2/ExoAmes/ and store it as an hdf5 
-file ('.h5') in the molecularResources folder.
+file ('.h5') in the molecularResources folder. Note that molecular line absorption can only be modelled for scenarios
+which have allow a temperature and pressure description (like the hydrostatic scenario).
 
 ## Usage
 1. Navigate to the git subfolder (here: '/Users/agebek/Prometheus/git') and start the setup program
 by typing ```python main.py``` in your terminal in the git subfolder. This starts the Q&A session
 in the terminal to setup a Prometheus calculation.
-2. During setup a name to store the parameter txt file has to be entered (e.g. 'testSimulation').
+2. Answer all the questions in the Q&A session. Only answers within the specified intervals are
+allowed. This Q&A session determines the density profiles of consideration (e.g. torus), 
+the stellar and planetary parameters of the system (e.g. stellar radius), the abundances
+of the absorbers in the system, and finally parameters related to the grids. Note that the
+runtime of the code is mostly set by the choice of the 5-dimensional grid (wavelength, time,
+three spatial dimensions).
+3. During setup a name to store the parameter txt file has to be entered (e.g. 'testSimulation').
 This file is located at '/Users/agebek/Proemtheus/setupFiles/testSimulation.txt'. To run a Prometheus
 calculation, navigate to the git subfolder and type ```python main.py testSimulation``` in
 the terminal. This will create the file '/Users/agebek/Prometheus/output/testSimulation_lightcurve.txt'
 (and, depending on your setup, additional output files) which contains the resulting lightcurve of the calculation.
-3. If you want to make use of the built-in plotting scripts, navigate to the plottingScripts subfolder
+4. If you want to make use of the built-in plotting scripts, navigate to the plottingScripts subfolder
 in the git subfolder (here: '/Users/agebek/Prometheus/git/plottingScripts'). Run the plotting script
 of your choice, e.g. 'plotSpectra.py' to plot a transmission spectrum, by typing ```python plotSpectra.py testSimulation```
 in the terminal.
