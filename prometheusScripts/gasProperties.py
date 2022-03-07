@@ -367,7 +367,13 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
         sigmaHighRes, wavelengthHighRes = createLookupAbsorption(v_los_max, wavelength, fundamentalsDict['LookupResolution'], key_scenario, specificScenarioDict, speciesDict, startTime)
 
         sigma_abs_function = interp1d(wavelengthHighRes, sigmaHighRes, kind = 'cubic')
-        sigma_abs = sigma_abs_function(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Clip because of rounding errors
+        sigma_abs_unclipped = sigma_abs_function(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Clip because of rounding & fitting errors
+
+        if np.any(sigma_abs_unclipped < 0.):
+            print('\nWARNING: The absorption cross section is smaller than zero somewhere. This is probably due to an insufficient lookup resolution. \
+The absorption cross section will be clipped to positive values.\n')
+
+        sigma_abs = np.clip(sigma_abs_unclipped, 0., a_max = None)
 
         for key_species in speciesDict[key_scenario].keys():
 
