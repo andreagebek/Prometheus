@@ -148,9 +148,9 @@ def getStarFactors(wavelength, fundamentalsDict, architectureDict, gridsDict):
 
 def calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime):
 
-    delta_x = 2 * gridsDict['x_border'] / float(gridsDict['x_steps'])
+    delta_x = 2. * gridsDict['x_border'] / float(gridsDict['x_steps'])
 
-    tau = 0
+    tau = 0.
 
     for key_scenario in scenarioDict.keys():
         print('\nOptical depth calculation for the ' + key_scenario + ' scenario starting:', datetime.datetime.now() - startTime)
@@ -161,13 +161,11 @@ def calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, a
         sigma_abs = gasprop.getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, startTime)
         print('Total absorption cross section calculation for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
         n = np.tile(n, (len(wavelength), 1, 1, 1, 1))
-        
-        BLOCK = (n == np.inf)
 
-        sigma_abs[BLOCK] = 1.   # If sigma_abs = 0 and n = inf we have an issue for the calculation of tau
-
-        tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)
+        tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)        
         print('Optical depth calculation for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime, '\n')
+
+    tau[np.isnan(tau)] = np.inf # Set blocked chords to have an optical depth of infinity
     return tau # tau(lambda, phi, rho, t)
 
 

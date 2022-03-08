@@ -61,14 +61,14 @@ def getNumberDensity(x, phi, rho, orbphase, key_scenario, specificScenarioDict, 
     x_p_fromStar, y_p = geom.getPlanetPosition(architectureDict, orbphase)
 
     blockingPlanet = (np.sqrt((y - y_p)**2 + z**2) < architectureDict['R_0'])
-    n = np.where(blockingPlanet, np.inf, n) # If the planet blocks a chord, set the number density to infinity
+    n = np.where(blockingPlanet, np.nan, n) # If the planet blocks a chord, set the number density to nan
 
     if fundamentalsDict['ExomoonSource']:
 
         y_moon = geom.getMoonPosition(architectureDict, orbphase)[1]
 
         blockingMoon = ((y - y_moon)**2 + z**2 < architectureDict['R_moon']**2) 
-        n = np.where(blockingMoon, np.inf, n)   # If the moon blocks a chord, set the number density to infinity
+        n = np.where(blockingMoon, np.nan, n)   # If the moon blocks a chord, set the number density to nan
 
     behindStar = (x + x_p_fromStar < 0)
     n = np.where(behindStar, 0, n) # If the grid point is behind the star, set the number density to zero
