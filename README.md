@@ -9,11 +9,10 @@ by various atoms and ions is considered (with line lists from NIST).
 
 ## Installation
 Note that this code is written in python 3.8.3. Compatibility testing has so far been very limited.
-1. Create a folder (e.g. 'Prometheus') at your desired location which will hold the git subfolder containing the code,
-as well as subfolders for txt files and figures created when performing a PROMETHEUS calculation.
-2. Run ```git clone https://github.com/andreagebek/Prometheus.git``` in your terminal in the 'Prometheus' folder.
-3. Create the following subfolders in the Prometheus folder: setupFiles, output, figures (```mkdir setupFiles output figures```).
-4. Optional: If you want to include molecular line absorption (currently, only sulfur dioxide is supported), create an additional 
+1. Run ```git clone https://github.com/andreagebek/Prometheus.git``` in your terminal in a directory of your choice. This will
+create the 'Prometheus' base folder.
+2. Create the following subfolders in the Prometheus folder: setupFiles, output, figures (```mkdir setupFiles output figures```).
+3. Optional: If you want to include molecular line absorption (currently, only sulfur dioxide is supported), create an additional 
 subfolder in the Prometheus folder named molceularResources: ```mkdir molecularResources```. Download the sulfur dioxide line list
 in TauRex format from the ExoMOL database under https://www.exomol.com/data/molecules/SO2/32S-16O2/ExoAmes/ and store it as an hdf5 
 file ('.h5') in the molecularResources folder. Note that molecular line absorption can only be modelled for scenarios
