@@ -45,4 +45,4 @@ based on data of the NIST line list.
 the NIST database as shown in the figure. Carefully copy all the settings shown in this figure (except for 
 the Spectrum field at the top where you can select the species).
 
-![NIST example](Resources/Nistexample.png)
+![NIST example](./Resources/Nistexample.png)
