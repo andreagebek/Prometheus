@@ -14,8 +14,7 @@ create the 'Prometheus' base folder.
 2. Create the following subfolders in the Prometheus folder: setupFiles, output, figures (```mkdir setupFiles output figures```).
 3. Optional: If you want to include molecular line absorption (currently, only sulfur dioxide is supported), create an additional 
 subfolder in the Prometheus folder named molceularResources: ```mkdir molecularResources```. Download the sulfur dioxide line list
-in TauRex format from the ExoMOL database under https://www.exomol.com/data/molecules/SO2/32S-16O2/ExoAmes/ and store it as an hdf5 
-file ('.h5') in the molecularResources folder. Note that molecular line absorption can only be modelled for scenarios
+in TauRex format from the ExoMOL database under https://www.exomol.com/data/molecules/SO2/32S-16O2/ExoAmes/ and store it as an hdf5 file ('.h5') in the molecularResources folder. Note that molecular line absorption can only be modelled for scenarios
 which have allow a temperature and pressure description (like the hydrostatic scenario).
 
 ## Usage
@@ -37,3 +36,13 @@ the terminal. This will create the file '/Users/agebek/Prometheus/output/testSim
 in the git subfolder (here: '/Users/agebek/Prometheus/git/plottingScripts'). Run the plotting script
 of your choice, e.g. 'plotSpectra.py' to plot a transmission spectrum, by typing ```python plotSpectra.py testSimulation```
 in the terminal.
+
+## Adding atomic/ionic absorption lines
+Adding more absorption lines of atoms and ions is relatively straightforward. The absorption cross sections are
+based on data of the NIST line list.
+1. Add the necessary information to the speciesInfoDict in the constants.py file.
+2. Append the line list to the LineList.txt file in the Resources folder. The line list can be obtained from
+the NIST database as shown in the figure. Carefully copy all the settings shown in this figure (except for 
+the Spectrum field at the top where you can select the species).
+
+![NIST example](Resources/Nistexample.png)
