@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Get stellar input spectrum from the synthetic PHOENIX library.
 Created on 9. August 2021 by Andrea Gebek (Initial code

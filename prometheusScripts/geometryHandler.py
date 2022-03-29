@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Functions to calculate the positions/velocities of exoplanet/exomoon.
 Created on 18. October 2021 by Andrea Gebek.

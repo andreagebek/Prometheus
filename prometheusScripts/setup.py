@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Run a question and answer session and store a settings.txt 
 file to run PROMETHEUS.

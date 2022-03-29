@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Calculate the light curve of a transiting exoplanet.
 Created on 15. July 2021 by Andrea Gebek.

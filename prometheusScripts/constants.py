@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 File which stores natural constants in cgs units.
 Created on 2. June 2021 by Andrea Gebek.

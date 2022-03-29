@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Main code to run the radiative transfer calculation.
 Created on 15. July 2021 by Andrea Gebek.

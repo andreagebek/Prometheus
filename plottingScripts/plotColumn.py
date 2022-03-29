@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 Author: Andrea Gebek
 Created on 4.12.2021

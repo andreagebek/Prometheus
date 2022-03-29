@@ -1,3 +1,4 @@
+# coding=utf-8
 """
 This file stores various functions related
 to the properties of the gas (e.g. number densities, velocities,
