@@ -326,12 +326,10 @@ def getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_s
 
                 line_wavelength, line_gamma, line_f = readLineList(key_species, wavelengthArray)
 
-                sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
-
-            
+                sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])            
             else:
 
-                sigma_abs += calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)      
+                sigma_abs += calculateMolecularAbsorption(phi, rho, orbphase, xArray, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)      
 
         if 'RayleighScatt' in specificScenarioDict.keys():
 

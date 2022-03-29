@@ -308,18 +308,16 @@ Specify the absorption species.
 
 print('\nSpecify the absorbing species and their abundances.\n')
 
-
-PossibleAtomicAbsorbers = list(const.speciesInfoDict.keys())
-PossibleAtomicAbsorbers.append('0')
-
-PossibleAbsorbers = list(const.speciesInfoDict.keys())
-PossibleAbsorbers.extend(['SO2', '0'])
-
-
 speciesDict = {}
 
 
 for key_scenario in scenarioDict.keys():
+
+    PossibleAtomicAbsorbers = list(const.speciesInfoDict.keys())
+    PossibleAtomicAbsorbers.append('0')
+
+    PossibleAbsorbers = list(const.speciesInfoDict.keys())
+    PossibleAbsorbers.extend(['SO2', '0'])
 
     speciesDict[key_scenario] = {}
 
