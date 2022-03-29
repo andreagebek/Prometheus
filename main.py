@@ -86,7 +86,7 @@ if outputDict['recordTau']:
 
 elapsedTime = datetime.now() - startTime
 
-print("\nDISHOOM-PROMETHEUS finished, yay! Elapsed time is:", elapsedTime)
+print("\nPROMETHEUS finished, yay! Elapsed time is:", elapsedTime)
 
 print("The maximal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.min(R)), 5)))
 

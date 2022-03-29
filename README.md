@@ -9,16 +9,17 @@ by various atoms and ions is considered (with line lists from NIST).
 
 ## Installation
 Note that this code is written in python 3.8.3. Compatibility testing has so far been very limited.
-1. Run ```git clone https://github.com/andreagebek/Prometheus.git``` in your terminal in a directory of your choice. This will
-create the 'Prometheus' base folder.
-2. Create the following subfolders in the Prometheus folder: setupFiles, output, figures (```mkdir setupFiles output figures```).
-3. Optional: If you want to include molecular line absorption (currently, only sulfur dioxide is supported), create an additional 
-subfolder in the Prometheus folder named molceularResources: ```mkdir molecularResources```. Download the sulfur dioxide line list
-in TauRex format from the ExoMOL database under https://www.exomol.com/data/molecules/SO2/32S-16O2/ExoAmes/ and store it as an hdf5 file ('.h5') in the molecularResources folder. Note that molecular line absorption can only be modelled for scenarios
-which have allow a temperature and pressure description (like the hydrostatic scenario).
+1. Create a folder (e.g. 'PrometheusProject') at your desired location which will hold the git subfolder containing the code,
+as well as subfolders for txt files and figures created when performing a PROMETHEUS calculation.
+2. Run ```git clone https://github.com/andreagebek/Prometheus.git``` in your terminal in your specified folder (in this case
+'PrometheusProject'). This will create the 'Prometheus' git folder which contains the code.
+3. Create the following subfolders in the 'PrometheusProject' folder: setupFiles, output, figures (```mkdir setupFiles output figures```).
+4. Optional: If you want to include molecular line absorption (currently, only sulfur dioxide is supported), create an additional 
+subfolder in the 'PrometheusProject' folder named molceularResources: ```mkdir molecularResources```. Download the sulfur dioxide line list
+in TauRex format from the ExoMOL database under https://www.exomol.com/data/molecules/SO2/32S-16O2/ExoAmes/ and store it as an hdf5 file ('.h5') in the molecularResources folder. Note that molecular line absorption can only be modelled for scenarios which have allow a temperature and pressure description (like the hydrostatic scenario).
 
 ## Usage
-1. Navigate to the git subfolder (here: '/Users/agebek/Prometheus/git') and start the setup program
+1. Navigate to the git subfolder (here: '/Users/agebek/PrometheusProject/Prometheus') and start the setup program
 by typing ```python main.py``` in your terminal in the git subfolder. This starts the Q&A session
 in the terminal to setup a Prometheus calculation.
 2. Answer all the questions in the Q&A session. Only answers within the specified intervals are
