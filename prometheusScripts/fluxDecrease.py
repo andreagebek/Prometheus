@@ -20,9 +20,10 @@ def constructAxis(gridsDict, architectureDict, axisName):
 
     if axisName == 'x':
 
+        x_midpoint = gridsDict['x_midpoint']
         x_border = gridsDict['x_border']
         x_steps = gridsDict['x_steps']
-        x_axis = np.linspace(-x_border, x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)  
+        x_axis = np.linspace(x_midpoint - x_border, x_midpoint + x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)  
 
         return x_axis
 
@@ -53,39 +54,21 @@ def constructAxis(gridsDict, architectureDict, axisName):
 
         return wavelength
 
-def constructSpatialGrid(gridsDict, architectureDict):
-
-    x_axis = constructAxis(gridsDict, architectureDict, 'x')
-
-    rho_axis = constructAxis(gridsDict, architectureDict, 'rho')
-
-    phi_axis = constructAxis(gridsDict, architectureDict, 'phi')
-
-    orbphase_axis = constructAxis(gridsDict, architectureDict, 'orbphase')
-
-    x, phi, rho, orbphase = np.meshgrid(x_axis, phi_axis, rho_axis, orbphase_axis, indexing = 'ij')
-    
-    return x, phi, rho, orbphase
-
 def calculateCLV(rho, R_star, u1, u2):
 
     arg = 1. - np.sqrt(1. - rho**2 / R_star**2)
 
     return 1. - u1 * arg - u2 * arg**2
 
-def calculateRM(wavelength, architectureDict, gridsDict):
+def calculateRM(phi, rho, wavelengthArray, architectureDict, PHOENIX_output):
 
     T_starrot = architectureDict['period_starrot']
     R_star = architectureDict['R_star']
 
-    phi_axis = constructAxis(gridsDict, architectureDict, 'phi')
-    rho_axis = constructAxis(gridsDict, architectureDict, 'rho')
-
-    PHOENIX_output = stellar.readSpectrum(architectureDict['T_eff'], architectureDict['log_g'], architectureDict['Fe_H'], architectureDict['alpha_Fe'])
     w_star = PHOENIX_output[0]
     v_max = 2. * np.pi * R_star / T_starrot
-    w_max = np.max(wavelength * gasprop.calculateDopplerShift(-v_max))
-    w_min = np.min(wavelength * gasprop.calculateDopplerShift(v_max))
+    w_max = np.max(wavelengthArray * gasprop.calculateDopplerShift(-v_max))
+    w_min = np.min(wavelengthArray * gasprop.calculateDopplerShift(v_max))
     SEL_w = np.argwhere((w_star > w_min) * (w_star < w_max))[:, 0]
 
     SEL = np.concatenate((np.array([np.min(SEL_w) - 1]), SEL_w, np.array([np.max(SEL_w) + 1])))
@@ -93,107 +76,184 @@ def calculateRM(wavelength, architectureDict, gridsDict):
     w_star = w_star[SEL]
     F_0 = PHOENIX_output[1][SEL]
 
-    v_los = geom.calculateStellarLOSvelocity(architectureDict, phi_axis, rho_axis)
+    v_los = geom.calculateStellarLOSvelocity(architectureDict, phi, rho)
     w_shift = gasprop.calculateDopplerShift(v_los)
 
     F_function = interp1d(w_star, F_0, kind = 'cubic')
-    F_shifted = F_function(np.tensordot(wavelength, 1. / w_shift, axes = 0)) # This contains the shifted flux incident on the exoplanet, instead of shifting the spectra
+    F_shifted = F_function(wavelengthArray / w_shift) # This contains the shifted flux incident on the exoplanet, instead of shifting the spectra
     # at all positions on the stellar surface just read in the spectrum at different wavelengths depending on the position in the spatial grid (phi and rho)
 
     return F_shifted
 
-def getStarFactors(wavelength, fundamentalsDict, architectureDict, gridsDict):
-    # Return F_star(wavelength, phi, rho) and its integral over the stellar disk
+def getPHOENIX_output(fundamentalsDict, architectureDict):
+
+    if fundamentalsDict['RM_effect']:
+
+        PHOENIX_output = stellar.readSpectrum(architectureDict['T_eff'], architectureDict['log_g'], architectureDict['Fe_H'], architectureDict['alpha_Fe'])
+    
+    else:
+
+        PHOENIX_output = None
+
+    return PHOENIX_output
+
+def getFstarIntegrated(wavelengthArray, fundamentalsDict, architectureDict, gridsDict, PHOENIX_output):
+    # Return F_star(wavelength, phi, rho) integrated over the stellar disk
 
     R_star = architectureDict['R_star']
-    phi_steps = gridsDict['phi_steps']
-    rho_steps = gridsDict['rho_steps']
-
-    rho_axis = constructAxis(gridsDict, architectureDict, 'rho')
 
     if not fundamentalsDict['CLV_variations'] and not fundamentalsDict['RM_effect']:
 
-        F_star = np.ones((len(wavelength), int(phi_steps), int(rho_steps)))
-        F_star_integrated = np.pi * R_star**2
+        FstarIntegrated = np.pi * R_star**2 * np.ones_like(wavelengthArray)
 
-        return F_star, F_star_integrated
 
     elif fundamentalsDict['CLV_variations'] and not fundamentalsDict['RM_effect']:
 
-        F_star = np.tile(calculateCLV(rho_axis, R_star, architectureDict['u1'], architectureDict['u2']), (len(wavelength), int(phi_steps), 1))
-        F_star_integrated = np.pi * R_star**2 * (1. - architectureDict['u1'] / 3. - architectureDict['u2'] / 6.)
+        FstarIntegrated = np.pi * R_star**2 * (1. - architectureDict['u1'] / 3. - architectureDict['u2'] / 6.) * np.ones_like(wavelengthArray)
 
-        return F_star, F_star_integrated
 
     else: # RM_effect = True
 
-        F_star = calculateRM(wavelength, architectureDict, gridsDict)
+        phiArray = constructAxis(gridsDict, architectureDict, 'phi')
+        rhoArray = constructAxis(gridsDict, architectureDict, 'rho')
+
+        phiGrid, rhoGrid = np.meshgrid(phiArray, rhoArray, indexing = 'ij')
+
+        GRID = np.stack((phiGrid.flatten(), rhoGrid.flatten()), axis = -1)
+
+        delta_rho = R_star / float(gridsDict['rho_steps'])
+        delta_phi = 2 * np.pi / float(gridsDict['phi_steps'])
+
+        FstarIntegrated = np.zeros_like(wavelengthArray)
+
+        for point in GRID:
+
+            phi = point[0]
+            rho = point[1]
+        
+            Fstar = calculateRM(phi, rho, wavelengthArray, architectureDict, PHOENIX_output)
+
+            if fundamentalsDict['CLV_variations']:
+
+                Fstar *= calculateCLV(rho, R_star, architectureDict['u1'], architectureDict['u2'])
+            
+            FstarIntegrated += Fstar * delta_phi * delta_rho * rho
+
+    return FstarIntegrated
+
+def getFstar(phi, rho, wavelengthArray, architectureDict, fundamentalsDict, PHOENIX_output):
+
+    # Return F_star(wavelength, phi, rho)
+
+    R_star = architectureDict['R_star']
+
+    if not fundamentalsDict['CLV_variations'] and not fundamentalsDict['RM_effect']:
+
+        Fstar = np.ones_like(wavelengthArray)
+
+    elif fundamentalsDict['CLV_variations'] and not fundamentalsDict['RM_effect']:
+
+        Fstar = calculateCLV(rho, R_star, architectureDict['u1'], architectureDict['u2']) * np.ones_like(wavelengthArray)
+
+    else: # RM_effect = True
+
+        Fstar = calculateRM(phi, rho, wavelengthArray, architectureDict, PHOENIX_output)
 
         if fundamentalsDict['CLV_variations']:
 
-            F_star *= np.tile(calculateCLV(rho_axis, R_star, architectureDict['u1'], architectureDict['u2']), (len(wavelength), int(phi_steps), 1))
+            Fstar *= calculateCLV(rho, R_star, architectureDict['u1'], architectureDict['u2'])
+
+    return Fstar
+
+
+def checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
+    # Check if the chord is blocked by the planet or the moon
+
+    y, z = geom.getCartesianFromCylinder(phi, rho)
+    y_p = geom.getPlanetPosition(architectureDict, orbphase)[1]
+
+    blockingPlanet = (np.sqrt((y - y_p)**2 + z**2) < architectureDict['R_0'])
+
+    if blockingPlanet:
+
+        return True
+    
+    if fundamentalsDict['ExomoonSource']:
+
+        y_moon = geom.getMoonPosition(architectureDict, orbphase)[1]
+
+        blockingMoon = ((y - y_moon)**2 + z**2 < architectureDict['R_moon']**2)
+
+        if blockingMoon:
+
+            return True
         
-        delta_rho = R_star / float(rho_steps)
-        delta_phi = 2 * np.pi / float(phi_steps)
-
-        F_star_integralphi = delta_phi * np.sum(F_star, axis = 1)
-        F_star_integralrho = delta_rho * np.tensordot(rho_axis, F_star_integralphi, axes = [0, 1])
-        F_star_integrated = np.tile(F_star_integralrho, (int(gridsDict['orbphase_steps']), 1)).T    
-        # Here, the integrated F_star depends on wavelength. Promote it to F_star_integrated(wavelength, orbphase).
-
-        return F_star, F_star_integrated
+    return False
 
 
-
-
-def calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime):
+def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict):
 
     delta_x = 2. * gridsDict['x_border'] / float(gridsDict['x_steps'])
 
     tau = 0.
 
     for key_scenario in scenarioDict.keys():
-        print('\nOptical depth calculation for the ' + key_scenario + ' scenario starting:', datetime.datetime.now() - startTime)
+
         specificScenarioDict = scenarioDict[key_scenario]
 
-        n = gasprop.getNumberDensity(x, phi, rho, orbphase, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)     
-        print('Number density calculation for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
-        sigma_abs = gasprop.getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, startTime)
-        print('Total absorption cross section calculation for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
-        n = np.tile(n, (len(wavelength), 1, 1, 1, 1))
+        n = gasprop.getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)     
 
-        tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)        
-        print('Optical depth calculation for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime, '\n')
+        sigma_abs = gasprop.getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict)
 
-    tau[np.isnan(tau)] = np.inf # Set blocked chords to have an optical depth of infinity
-    return tau # tau(lambda, phi, rho, t)
+        tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)
+
+    return tau # tau(lambda)
 
 
 def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime):
-    """Calculate the wavelength-dependent transit depth
+    """Calculate the wavelength-dependent transit depth.
     """
 
-    x, phi, rho, orbphase = constructSpatialGrid(gridsDict, architectureDict)
+    xArray = constructAxis(gridsDict, architectureDict, 'x')
 
-    wavelength = constructAxis(gridsDict, architectureDict, 'wavelength')
+    wavelengthArray = constructAxis(gridsDict, architectureDict, 'wavelength')
 
-    tau = calculateOpticalDepth(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime)
-    print('Total optical depth calculated:', datetime.datetime.now() - startTime)
-    singleChord = np.exp(-tau)
+    phiArray = constructAxis(gridsDict, architectureDict, 'phi')
+    rhoArray = constructAxis(gridsDict, architectureDict, 'rho')
+    orbphaseArray = constructAxis(gridsDict, architectureDict, 'orbphase')
+
+    phiGrid, rhoGrid, orbphaseGrid = np.meshgrid(phiArray, rhoArray, orbphaseArray, indexing = 'ij')
+
+    GRID = np.stack((phiGrid.flatten(), rhoGrid.flatten(), orbphaseGrid.flatten()), axis = -1)
 
     delta_rho = architectureDict['R_star'] / float(gridsDict['rho_steps'])
     delta_phi = 2 * np.pi / float(gridsDict['phi_steps'])
 
-    F_star_untiled, F_star_integrated = getStarFactors(wavelength, fundamentalsDict, architectureDict, gridsDict)
-    print('Calculations with the stellar flux finished:', datetime.datetime.now() - startTime)
-    F_star_tiled = np.tile(F_star_untiled, (int(gridsDict['orbphase_steps']), 1, 1, 1))
-    F_star = np.moveaxis(F_star_tiled, 0, -1) # F_star(lambda, phi, rho, orbphase)
+    PHOENIX_output = getPHOENIX_output(fundamentalsDict, architectureDict)
+    FstarIntegrated = getFstarIntegrated(wavelengthArray, fundamentalsDict, architectureDict, gridsDict, PHOENIX_output) # Stellar flux as a function of wavelength, integrated over the stellar disk
 
-    integral_phi = delta_phi * np.sum(np.multiply(F_star, singleChord), axis = 1) # f(lambda, rho, orbphase)
+    R = np.zeros((len(wavelengthArray), len(orbphaseArray)))
 
-    sum_over_chords = delta_rho * np.tensordot(rho[0, 0, :, 0], integral_phi, axes = [0, 1]) # Integrate along the rho-axis
+    for idx, point in enumerate(GRID):
 
-    R = sum_over_chords / F_star_integrated # R(lambda, orbphase)
+        phi = point[0]
+        rho = point[1]
+        orbphase = point[2]
+
+        if checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
+
+            tau = np.inf * np.ones_like(wavelengthArray)
+
+        else:
+
+            tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict)
+
+        Fstar = getFstar(phi, rho, wavelengthArray, architectureDict, fundamentalsDict, PHOENIX_output)
+
+        singleChord = rho * Fstar * np.exp(-tau) * delta_phi * delta_rho
+        idxOrbphase = idx % len(orbphaseArray)
+
+        R[:, idxOrbphase] += singleChord / FstarIntegrated
 
     resultsDict = {'R': R}
 

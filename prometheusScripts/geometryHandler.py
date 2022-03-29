@@ -11,12 +11,12 @@ GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 sys.path.append(GITPATH)
 import prometheusScripts.constants as const
 
-def getPlanetPosition(architectureDict, orbphase):
+def getPlanetPosition(architectureDict, orbphase): # Circular orbit
 
-    x_p_fromStar = architectureDict['a_p'] * np.cos(orbphase)    # The actual x_p is always 0
+    x_p = architectureDict['a_p'] * np.cos(orbphase)
     y_p = architectureDict['a_p'] * np.sin(orbphase)
 
-    return x_p_fromStar, y_p
+    return x_p, y_p
 
 def getOrbphaseMoon(architectureDict, orbphase):
 
@@ -28,8 +28,10 @@ def getMoonPosition(architectureDict, orbphase):
 
     orbphase_moon = getOrbphaseMoon(architectureDict, orbphase)
 
-    x_moon = architectureDict['a_moon'] * np.cos(orbphase_moon)     # Planet is always at x = 0
-    y_moon = getPlanetPosition(architectureDict, orbphase)[1] + architectureDict['a_moon'] * np.sin(orbphase_moon)
+    x_p, y_p = getPlanetPosition(architectureDict, orbphase)
+
+    x_moon = x_p + architectureDict['a_moon'] * np.cos(orbphase_moon)
+    y_moon = y_p + architectureDict['a_moon'] * np.sin(orbphase_moon)
 
     return x_moon, y_moon
 
@@ -57,46 +59,46 @@ def getPlanetRotationLOSvelocity(architectureDict, phi, rho, orbphase, key_scena
 
     else:
 
-        v_los = np.zeros(np.shape(phi))
+        v_los = 0.
     
     return v_los
 
-def getCartesianFromCylinder(x, phi, rho):
+def getCartesianFromCylinder(phi, rho):
 
     y = rho * np.sin(phi)
     z = rho * np.cos(phi)
 
-    return x, y, z
+    return y, z
 
 
-def getDistanceFromPlanet(architectureDict, x, phi, rho, orbphase):
+def getDistanceFromPlanet(architectureDict, phi, rho, orbphase, xArray):
 
-    x, y, z = getCartesianFromCylinder(x, phi, rho)
+    y, z = getCartesianFromCylinder(phi, rho)
     
-    y_p = getPlanetPosition(architectureDict, orbphase)[1]
+    x_p, y_p = getPlanetPosition(architectureDict, orbphase)
 
-    r_fromPlanet = np.sqrt(x**2 + (y - y_p)**2 + z**2)
+    r_fromPlanet = np.sqrt((xArray - x_p)**2 + (y - y_p)**2 + z**2)
 
     return r_fromPlanet
 
-def getTorusCoords(architectureDict, x, phi, rho, orbphase):
+def getTorusCoords(architectureDict, phi, rho, orbphase, xArray):
 
-    x, y, z = getCartesianFromCylinder(x, phi, rho)
+    y, z = getCartesianFromCylinder(phi, rho)
     
-    y_p = getPlanetPosition(architectureDict, orbphase)[1]
+    x_p, y_p = getPlanetPosition(architectureDict, orbphase)
 
-    a = np.sqrt(x**2 + (y - y_p)**2)
+    a = np.sqrt((xArray - x_p)**2 + (y - y_p)**2)
 
     return a, z
 
 
-def getDistanceFromMoon(architectureDict, x, phi, rho, orbphase):
+def getDistanceFromMoon(architectureDict, phi, rho, orbphase, xArray):
 
-    x, y, z = getCartesianFromCylinder(x, phi, rho)
+    y, z = getCartesianFromCylinder(phi, rho)
 
     x_moon, y_moon = getMoonPosition(architectureDict, orbphase)
     
-    r_fromMoon = np.sqrt((x - x_moon)**2 + (y - y_moon)**2 + z**2)
+    r_fromMoon = np.sqrt((xArray - x_moon)**2 + (y - y_moon)**2 + z**2)
 
     return r_fromMoon
 

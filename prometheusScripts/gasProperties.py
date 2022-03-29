@@ -24,54 +24,37 @@ startTime = datetime.datetime.now()
 Number density functions
 """
 
-def getNumberDensity(x, phi, rho, orbphase, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict):
+def getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict):
 
     if key_scenario == 'barometric':
 
-        r_fromP = geom.getDistanceFromPlanet(architectureDict, x, phi, rho, orbphase)
+        r_fromP = geom.getDistanceFromPlanet(architectureDict, phi, rho, orbphase, xArray)
         n = getBarometric_n(r_fromP, specificScenarioDict, architectureDict)
 
     elif key_scenario == 'hydrostatic':
 
-        r_fromP = geom.getDistanceFromPlanet(architectureDict, x, phi, rho, orbphase)
+        r_fromP = geom.getDistanceFromPlanet(architectureDict, phi, rho, orbphase, xArray)
         n = getHydrostatic_n(r_fromP, specificScenarioDict, architectureDict)
 
     elif key_scenario == 'escaping':
 
-        r_fromP = geom.getDistanceFromPlanet(architectureDict, x, phi, rho, orbphase)
+        r_fromP = geom.getDistanceFromPlanet(architectureDict, phi, rho, orbphase, xArray)
         n = getEscaping_n(r_fromP, specificScenarioDict, architectureDict)
 
     elif key_scenario == 'exomoon':
 
-        r_fromMoon = geom.getDistanceFromMoon(architectureDict, x, phi, rho, orbphase)
+        r_fromMoon = geom.getDistanceFromMoon(architectureDict, phi, rho, orbphase, xArray)
         n = getExomoon_n(r_fromMoon, specificScenarioDict, architectureDict)
 
     elif key_scenario == 'torus':
 
-        a, z = geom.getTorusCoords(architectureDict, x, phi, rho, orbphase)
+        a, z = geom.getTorusCoords(architectureDict, phi, rho, orbphase, xArray)
         n = getTorus_n(a, z, specificScenarioDict, architectureDict)
 
     else:
 
         print('This key for a number density structure does not exist. The program exits now.')
         sys.exit(1)
-
-
-    x, y, z = geom.getCartesianFromCylinder(x, phi, rho)
-    x_p_fromStar, y_p = geom.getPlanetPosition(architectureDict, orbphase)
-
-    blockingPlanet = (np.sqrt((y - y_p)**2 + z**2) < architectureDict['R_0'])
-    n = np.where(blockingPlanet, np.nan, n) # If the planet blocks a chord, set the number density to nan
-
-    if fundamentalsDict['ExomoonSource']:
-
-        y_moon = geom.getMoonPosition(architectureDict, orbphase)[1]
-
-        blockingMoon = ((y - y_moon)**2 + z**2 < architectureDict['R_moon']**2) 
-        n = np.where(blockingMoon, np.nan, n)   # If the moon blocks a chord, set the number density to nan
-
-    behindStar = (x + x_p_fromStar < 0)
-    n = np.where(behindStar, 0, n) # If the grid point is behind the star, set the number density to zero
     
     return n
 
@@ -173,9 +156,9 @@ Velocity functions (for Doppler shifts)
 """
 
 
-def getLOSVelocity(x, phi, rho, orbphase, fundamentalsDict, key_scenario, specificScenarioDict, architectureDict):
+def getLOSVelocity(phi, rho, orbphase, xArray, fundamentalsDict, key_scenario, specificScenarioDict, architectureDict):
 
-    v_los = np.zeros(np.shape(x))
+    v_los = np.zeros(np.shape(xArray))
 
     if fundamentalsDict['DopplerOrbitalMotion']:
 
@@ -187,38 +170,37 @@ def getLOSVelocity(x, phi, rho, orbphase, fundamentalsDict, key_scenario, specif
 
     if key_scenario == 'escaping' and specificScenarioDict['RadialWind']:
 
-        v_los += getEscaping_v(x, phi, rho, orbphase, specificScenarioDict, architectureDict)
+        v_los += getEscaping_v(phi, rho, orbphase, xArray, specificScenarioDict, architectureDict)
 
     elif key_scenario == 'exomoon' and specificScenarioDict['RadialWind']:
 
-        v_los += getExomoon_v(x, phi, rho, orbphase, specificScenarioDict, architectureDict)
+        v_los += getExomoon_v(phi, rho, orbphase, xArray, specificScenarioDict, architectureDict)
 
     return v_los
 
 
-def getEscaping_v(x, phi, rho, orbphase, specificScenarioDict, architectureDict):
+def getEscaping_v(phi, rho, orbphase, xArray, specificScenarioDict, architectureDict):
 
     v_0 = specificScenarioDict['vRadial_0']
     q_esc = specificScenarioDict['q_esc']
     R_0 = architectureDict['R_0']
 
-    r = geom.getDistanceFromPlanet(architectureDict, x, phi, rho, orbphase)
+    r = geom.getDistanceFromPlanet(architectureDict, phi, rho, orbphase, xArray)
 
-    v_los = v_0 * (r / R_0) ** (q_esc - 2.) * x / r
+    v_los = v_0 * (r / R_0) ** (q_esc - 2.) * xArray / r
 
     return v_los
 
-def getExomoon_v(x, phi, rho, orbphase, specificScenarioDict, architectureDict):
+def getExomoon_v(phi, rho, orbphase, xArray, specificScenarioDict, architectureDict):
 
     v_0 = specificScenarioDict['vRadial_0']
     q_moon = specificScenarioDict['q_moon']
     R_moon = architectureDict['R_moon']
 
-
-    r = geom.getDistanceFromMoon(architectureDict, x, phi, rho, orbphase)
+    r = geom.getDistanceFromMoon(architectureDict, phi, rho, orbphase, xArray)
     x_moon = geom.getMoonPosition(architectureDict, orbphase)[0]
 
-    v_los = v_0 * (r / R_moon)**(q_moon - 2.) * (x - x_moon) / r
+    v_los = v_0 * (r / R_moon)**(q_moon - 2.) * (xArray - x_moon) / r
 
     return v_los
 
@@ -254,24 +236,22 @@ def readMolecularAbsorption(key_species):
 
     with h5py.File(os.path.dirname(GITPATH) + '/molecularResources/' + key_species + '.h5', 'r+') as f:
 
-        P = f['p'][:] * 10 # TauREX format is in Pascal, convert to cgs-units
+        P = f['p'][:] * 10 # TauREX format is in Pascal, convert to cgs-units. Is it really in Pascal though?
         T = f['t'][:]   # Temperature in K
         w = 1. / f['bin_edges'][:] # Wavelength in cm
         sigma = f['xsecarr'][:] # Absorption cross section in cm^2/molecule
 
         return P, T, w, sigma
 
-def calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, chi, key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict):
+def calculateMolecularAbsorption(phi, rho, orbphase, xArray, wavelengthShifted, chi, key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict):
 
     P_mol, T_mol, wavelength_mol, sigma_mol = readMolecularAbsorption(key_species)
     sigma_mol_function = RegularGridInterpolator((P_mol, T_mol, wavelength_mol[::-1]), sigma_mol[:, :, ::-1], bounds_error = False, fill_value = 0.)
 
-    T_spatialGrid = np.ones_like(x) * specificScenarioDict['T']
-    P_spatialGrid = const.k_B * T_spatialGrid * getNumberDensity(x, phi, rho, orbphase, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
-    T_grid = np.tile(np.clip(T_spatialGrid, np.min(T_mol), np.max(T_mol)), (np.size(wavelengthShifted, 0), 1, 1, 1, 1))
-    P_grid = np.tile(np.clip(P_spatialGrid, np.min(P_mol), np.max(P_mol)), (np.size(wavelengthShifted, 0), 1, 1, 1, 1))
+    T_Grid = np.ones_like(xArray) * specificScenarioDict['T']
+    P_Grid = const.k_B * T_Grid * getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
 
-    return sigma_mol_function((np.clip(P_grid, np.min(P_mol), np.max(P_mol)), np.clip(T_grid, np.min(T_mol), np.max(T_mol)), wavelengthShifted)) * chi
+    return sigma_mol_function((np.clip(P_Grid, np.min(P_mol), np.max(P_mol)), np.clip(T_Grid, np.min(T_mol), np.max(T_mol)), wavelengthShifted)) * chi
 
 def calculateLineAbsorption(wavelength, line_wavelength, line_gamma, line_f, specificSpeciesDict):
 
@@ -300,7 +280,7 @@ def calculateDopplerShift(v_los):
 
     return shift
 
-def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario, specificScenarioDict, speciesDict, startTime):
+def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario, specificScenarioDict, speciesDict):
 
     w_min = np.min(wavelength) * calculateDopplerShift(v_los_max)
     w_max = np.max(wavelength) * calculateDopplerShift(-v_los_max)
@@ -314,9 +294,9 @@ def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario
         if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
 
             line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
-            print(key_species + ' line parameters read-in for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
+
             sigmaHighRes += calculateLineAbsorption(wavelengthHighRes, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
-            print('Absorption cross section calculation due to ' + key_species + ' in the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
+
 
     if 'RayleighScatt' in specificScenarioDict.keys():
 
@@ -327,14 +307,14 @@ def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario
     return sigmaHighRes, wavelengthHighRes
  
 
-def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, startTime):
+def getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict):
     # Note that this absorption cross section is already multiplied by either the mixing ratio or the total number of absorbing atoms,
     # hence it doesn't reflect the bare absorption cross section per particle
 
-    v_los = getLOSVelocity(x, phi, rho, orbphase, fundamentalsDict, key_scenario, specificScenarioDict, architectureDict)
+    v_los = getLOSVelocity(phi, rho, orbphase, xArray, fundamentalsDict, key_scenario, specificScenarioDict, architectureDict)
 
     wavelengthShiftFactor = calculateDopplerShift(-v_los)
-    wavelengthShifted = np.tensordot(wavelength, wavelengthShiftFactor, axes = 0)
+    wavelengthShifted = np.tensordot(wavelengthArray, wavelengthShiftFactor, axes = 0)
 
     if fundamentalsDict['ExactSigmaAbs']:
 
@@ -344,15 +324,14 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
 
             if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
 
-                line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
-                print(key_species + ' line parameters read-in for the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
+                line_wavelength, line_gamma, line_f = readLineList(key_species, wavelengthArray)
+
                 sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
-                print('Absorption cross section calculation due to ' + key_species + ' in the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)
+
             
             else:
 
-                sigma_abs += calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
-                print('Absorption cross section calculation due to ' + key_species + ' in the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)           
+                sigma_abs += calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)      
 
         if 'RayleighScatt' in specificScenarioDict.keys():
 
@@ -364,7 +343,7 @@ def getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, key_scenario, f
 
         v_los_max = np.max(np.abs(v_los))
 
-        sigmaHighRes, wavelengthHighRes = createLookupAbsorption(v_los_max, wavelength, fundamentalsDict['LookupResolution'], key_scenario, specificScenarioDict, speciesDict, startTime)
+        sigmaHighRes, wavelengthHighRes = createLookupAbsorption(v_los_max, wavelengthArray, fundamentalsDict['LookupResolution'], key_scenario, specificScenarioDict, speciesDict)
 
         sigma_abs_function = interp1d(wavelengthHighRes, sigmaHighRes, kind = 'cubic')
         sigma_abs_unclipped = sigma_abs_function(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Clip because of rounding & fitting errors
@@ -379,7 +358,6 @@ The absorption cross section will be clipped to positive values.\n')
 
             if not 'sigma_v' in speciesDict[key_scenario][key_species].keys():
 
-                sigma_abs += calculateMolecularAbsorption(x, phi, rho, orbphase, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
-                print('Absorption cross section calculation due to ' + key_species + ' in the ' + key_scenario + ' scenario finished:', datetime.datetime.now() - startTime)           
+                sigma_abs += calculateMolecularAbsorption(phi, rho, orbphase, xArray, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
     
     return sigma_abs
