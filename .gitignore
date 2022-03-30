@@ -130,3 +130,6 @@ dmypy.json
 
 # AG 3.6.2021
 .DS_store
+
+# AG 30.3.2022
+.vscode
