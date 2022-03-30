@@ -191,19 +191,19 @@ def checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
     return False
 
 
-def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict):
+def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict):
 
     delta_x = 2. * gridsDict['x_border'] / float(gridsDict['x_steps'])
 
     tau = 0.
 
-    for key_scenario in scenarioDict.keys():
+    for key_scenario in scenarioDict.keys(): # Loop over scenarios
 
         specificScenarioDict = scenarioDict[key_scenario]
 
         n = gasprop.getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)     
 
-        sigma_abs = gasprop.getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict)
+        sigma_abs = gasprop.getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, sigmaLookupDict)
 
         tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)
 
@@ -232,6 +232,8 @@ def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, spec
     PHOENIX_output = getPHOENIX_output(fundamentalsDict, architectureDict)
     FstarIntegrated = getFstarIntegrated(wavelengthArray, fundamentalsDict, architectureDict, gridsDict, PHOENIX_output) # Stellar flux as a function of wavelength, integrated over the stellar disk
 
+    sigmaLookupDict = gasprop.createLookupAbsorption(xArray, wavelengthArray, GRID, fundamentalsDict, architectureDict, scenarioDict, speciesDict)
+
     R = np.zeros((len(wavelengthArray), len(orbphaseArray)))
 
     for idx, point in enumerate(GRID):
@@ -246,7 +248,7 @@ def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, spec
 
         else:
 
-            tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict)
+            tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict)
 
         Fstar = getFstar(phi, rho, wavelengthArray, architectureDict, fundamentalsDict, PHOENIX_output)
 

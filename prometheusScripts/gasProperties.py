@@ -280,34 +280,58 @@ def calculateDopplerShift(v_los):
 
     return shift
 
-def createLookupAbsorption(v_los_max, wavelength, LookupResolution, key_scenario, specificScenarioDict, speciesDict):
+def createLookupAbsorption(xArray, wavelengthArray, GRID, fundamentalsDict, architectureDict, scenarioDict, speciesDict):
 
-    w_min = np.min(wavelength) * calculateDopplerShift(v_los_max)
-    w_max = np.max(wavelength) * calculateDopplerShift(-v_los_max)
-    wavelengthHighRes = np.arange(w_min, w_max, LookupResolution)
+    if fundamentalsDict['ExactSigmaAbs']:
 
-    sigmaHighRes = np.zeros_like(wavelengthHighRes)
+        return None
 
-    for key_species in speciesDict[key_scenario].keys():
+    else:
+
+        sigmaLookupDict = {}
+
+        for key_scenario in scenarioDict.keys():
+
+            v_los = []
+
+            for point in GRID:
+
+                phi = point[0]
+                rho = point[1]
+                orbphase = point[2]
+            
+                v_los.append(getLOSVelocity(phi, rho, orbphase, xArray, fundamentalsDict, key_scenario, scenarioDict[key_scenario], architectureDict))
+
+            v_los_max = np.max(np.abs(v_los))
+
+            w_min = np.min(wavelengthArray) * calculateDopplerShift(v_los_max)
+            w_max = np.max(wavelengthArray) * calculateDopplerShift(-v_los_max)
+            wavelengthHighRes = np.arange(w_min, w_max, fundamentalsDict['LookupResolution'])
+
+            sigmaHighRes = np.zeros_like(wavelengthHighRes)
+
+            for key_species in speciesDict[key_scenario].keys():
+
+                if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
+
+                    line_wavelength, line_gamma, line_f = readLineList(key_species, wavelengthArray)
+
+                    sigmaHighRes += calculateLineAbsorption(wavelengthHighRes, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
 
 
-        if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
+            if 'RayleighScatt' in scenarioDict[key_scenario].keys():
 
-            line_wavelength, line_gamma, line_f = readLineList(key_species, wavelength)
+                if scenarioDict[key_scenario]['RayleighScatt']:
 
-            sigmaHighRes += calculateLineAbsorption(wavelengthHighRes, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
+                    sigmaHighRes += 8.49e-45 / wavelengthHighRes**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
+            
+            sigmaLookupFunction = interp1d(wavelengthHighRes, sigmaHighRes, kind = 'cubic')
+            sigmaLookupDict[key_scenario] = (sigmaLookupFunction, wavelengthHighRes)
 
-
-    if 'RayleighScatt' in specificScenarioDict.keys():
-
-        if specificScenarioDict['RayleighScatt']:
-
-            sigmaHighRes += 8.49e-45 / wavelengthHighRes**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
-
-    return sigmaHighRes, wavelengthHighRes
+    return sigmaLookupDict
  
 
-def getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict):
+def getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, sigmaLookupDict):
     # Note that this absorption cross section is already multiplied by either the mixing ratio or the total number of absorbing atoms,
     # hence it doesn't reflect the bare absorption cross section per particle
 
@@ -339,18 +363,15 @@ def getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_s
 
     else:
 
-        v_los_max = np.max(np.abs(v_los))
+        sigmaLookupFunction, wavelengthHighRes = sigmaLookupDict[key_scenario]
 
-        sigmaHighRes, wavelengthHighRes = createLookupAbsorption(v_los_max, wavelengthArray, fundamentalsDict['LookupResolution'], key_scenario, specificScenarioDict, speciesDict)
+        sigmaLookupUnclipped = sigmaLookupFunction(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Clip because of rounding & fitting errors
 
-        sigma_abs_function = interp1d(wavelengthHighRes, sigmaHighRes, kind = 'cubic')
-        sigma_abs_unclipped = sigma_abs_function(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Clip because of rounding & fitting errors
-
-        if np.any(sigma_abs_unclipped < 0.):
+        if np.any(sigmaLookupUnclipped < 0.):
             print('\nWARNING: The absorption cross section is smaller than zero somewhere. This is probably due to an insufficient lookup resolution. \
 The absorption cross section will be clipped to positive values.\n')
 
-        sigma_abs = np.clip(sigma_abs_unclipped, 0., a_max = None)
+        sigma_abs = np.clip(sigmaLookupUnclipped, 0., a_max = None)
 
         for key_species in speciesDict[key_scenario].keys():
 
