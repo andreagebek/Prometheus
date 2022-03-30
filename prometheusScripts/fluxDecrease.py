@@ -210,9 +210,27 @@ def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundament
     return tau # tau(lambda)
 
 
-def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime):
-    """Calculate the wavelength-dependent transit depth.
-    """
+def evaluateChord(point, args): # Function to be multiprocessed
+
+    phi, rho, orbphase = point
+
+    delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, PHOENIX_output, FstarIntegrated = args
+
+    if checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
+
+        tau = np.inf * np.ones_like(wavelengthArray)
+
+    else:
+
+        tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict)
+
+    Fstar = getFstar(phi, rho, wavelengthArray, architectureDict, fundamentalsDict, PHOENIX_output)
+
+    singleChord = rho * Fstar * np.exp(-tau) * delta_phi * delta_rho
+
+    return singleChord / FstarIntegrated
+
+def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict):
 
     xArray = constructAxis(gridsDict, architectureDict, 'x')
 
@@ -234,47 +252,9 @@ def calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, spec
 
     sigmaLookupDict = gasprop.createLookupAbsorption(xArray, wavelengthArray, GRID, fundamentalsDict, architectureDict, scenarioDict, speciesDict)
 
-    R = np.zeros((len(wavelengthArray), len(orbphaseArray)))
+    args = (delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, PHOENIX_output, FstarIntegrated)
 
-    for idx, point in enumerate(GRID):
-
-        phi = point[0]
-        rho = point[1]
-        orbphase = point[2]
-
-        if checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
-
-            tau = np.inf * np.ones_like(wavelengthArray)
-
-        else:
-
-            tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict)
-
-        Fstar = getFstar(phi, rho, wavelengthArray, architectureDict, fundamentalsDict, PHOENIX_output)
-
-        singleChord = rho * Fstar * np.exp(-tau) * delta_phi * delta_rho
-        idxOrbphase = idx % len(orbphaseArray)
-
-        R[:, idxOrbphase] += singleChord / FstarIntegrated
-
-    resultsDict = {'R': R}
-
-    if outputDict['recordTau']:
-
-        argmaxR =  np.unravel_index(np.argmin(R, axis = None), sum_over_chords.shape)
-
-        tauDisk = tau[argmaxR[0], :, :, argmaxR[1]]
-        
-        resultsDict['tauDisk'] = tauDisk
-
-    if outputDict['benchmark']:
-
-        R_benchmark = calculateBarometricBenchmark(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, scenarioDict['barometric'], speciesDict)
-        print('Benchmark transit spectrum calculated:', datetime.datetime.now() - startTime)
-
-        resultsDict['R_benchmark'] = R_benchmark
-
-    return resultsDict
+    return GRID, args
 
 
 def calculateBarometricBenchmark(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, specificScenarioDict, speciesDict):

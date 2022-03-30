@@ -8,97 +8,114 @@ import json
 import numpy as np
 from datetime import datetime
 import os
+import multiprocessing as mp
+from functools import partial
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(SCRIPTPATH)
 PARENTPATH = os.path.dirname(GITPATH)
 sys.path.append(GITPATH)
 import prometheusScripts.constants as const
 
-N_arguments = len(sys.argv)
+if __name__ == '__main__':
 
-if N_arguments == 1:
+    N_arguments = len(sys.argv)
 
-    import prometheusScripts.setup
+    if N_arguments == 1:
 
-    sys.exit(0)
+        import prometheusScripts.setup
 
-import prometheusScripts.fluxDecrease as flux
+        sys.exit(0)
 
-startTime = datetime.now()
+    import prometheusScripts.fluxDecrease as flux
 
-"""
-Read in the json parameters and perform the radiative transfer calculation
-"""
+    startTime = datetime.now()
 
-paramsFilename = sys.argv[1]
+    """
+    Read in the json parameters and perform the radiative transfer calculation
+    """
 
-with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
-    param = json.load(file)
+    paramsFilename = sys.argv[1]
 
-fundamentalsDict = param['Fundamentals']
-scenarioDict = param['Scenarios']
-architectureDict = param['Architecture']
-speciesDict = param['Species']
-gridsDict = param['Grids']
-outputDict = param['Output']
+    with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
+        param = json.load(file)
 
-resultsDict = flux.calculateTransitDepth(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime)
-R = resultsDict['R'].flatten()
+    fundamentalsDict = param['Fundamentals']
+    scenarioDict = param['Scenarios']
+    architectureDict = param['Architecture']
+    speciesDict = param['Species']
+    gridsDict = param['Grids']
+    outputDict = param['Output']
 
-"""
-Store the output in .txt files
-"""
+    GRID, args = flux.prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict)
 
-orbphase_axis = flux.constructAxis(gridsDict, architectureDict, 'orbphase')
-wavelength_axis = flux.constructAxis(gridsDict, architectureDict, 'wavelength') * 1e8 # Conversion from cm to Angstrom
+    N_cores = mp.cpu_count()
 
-wavelength, orbphase = np.meshgrid(wavelength_axis, orbphase_axis, indexing = 'ij')
-wavelength = wavelength.flatten()
-orbphase = orbphase.flatten()
+    RESULTS = []
 
+    with mp.Pool(processes = N_cores) as pool:
 
-header = 'Wavelength grid (Å), Orbital phase grid [rad], R'
+        RESULTS = pool.map(partial(flux.evaluateChord, args = args), GRID)
 
-np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt', np.array([wavelength, orbphase, R]).T, header = header)
+    pool.close()
+    pool.join()
+    print(sys.getsizeof(RESULTS))
+    R = np.sum(np.array(RESULTS).reshape((int(gridsDict['orbphase_steps']), int(gridsDict['phi_steps']) * int(gridsDict['rho_steps']), len(args[3]))), axis = 1).flatten() # Sum over rho and phi coordinates
 
 
-if outputDict['benchmark']:
+    """
+    Store the output in .txt files
+    """
 
-    R_benchmark = resultsDict['R_benchmark'].flatten()
+    orbphase_axis = flux.constructAxis(gridsDict, architectureDict, 'orbphase')
+    wavelength_axis = flux.constructAxis(gridsDict, architectureDict, 'wavelength') * 1e8 # Conversion from cm to Angstrom
 
-    np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_barometricBenchmark.txt', np.array([wavelength, orbphase, R_benchmark]).T, header = header)
-
-
-if outputDict['recordTau']:
-
-    rho_axis = flux.constructAxis(gridsDict, architectureDict, 'rho')
-
-    phi_axis = flux.constructAxis(gridsDict, architectureDict, 'phi')
-    
-    phi, rho = np.meshgrid(phi_axis, rho_axis, indexing = 'ij')
-    phi = phi.flatten()
-    rho = rho.flatten()
-
-    tauDisk = resultsDict['tauDisk'].flatten()
-
-    np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_tau.txt', np.array([phi, rho, tauDisk]).T, header = 'phi grid [rad], rho grid [cm], tau')  
-
-elapsedTime = datetime.now() - startTime
-
-print("\nDISHOOM-PROMETHEUS finished, yay! Elapsed time is:", elapsedTime)
-
-print("The maximal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.min(R)), 5)))
-
-print("The minimal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.max(R)), 5)))
+    wavelength, orbphase = np.meshgrid(wavelength_axis, orbphase_axis, indexing = 'ij')
+    wavelength = wavelength.flatten()
+    orbphase = orbphase.flatten()
 
 
-print(r"""
- *******  *******           ,/MMM8&&&.         ****     **** ******** ********** **      ** ******** **     **  ********
-/**////**/**////**     _...MMMMM88&&&&..._    /**/**   **/**/**///// /////**/// /**     /**/**///// /**    /** **////// 
-/**   /**/**   /**   .:'''MMMMM88&&&&&&''':.  /**//** ** /**/**          /**    /**     /**/**      /**    /**/**       
-/******* /*******   :     MMMMM88&&&&&&     : /** //***  /**/*******     /**    /**********/******* /**    /**/*********
-/**////  /**///**    ':...MMMMM88&&&&&&....:  /**  //*   /**/**////      /**    /**//////**/**////  /**    /**////////**
-/**      /**  //**      `''MMMMM88&&&&'''`    /**   /    /**/**          /**    /**     /**/**      /**    /**       /**
-/**      /**   //**         'MMM8&&&'         /**        /**/********    /**    /**     /**/********//*******  ******** 
-//       //     //                            //         // ////////     //     //      // ////////  ///////  ////////  
-""")
+    header = 'Wavelength grid (Å), Orbital phase grid [rad], R'
+
+    np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt', np.array([wavelength, orbphase, R]).T, header = header)
+
+
+    if outputDict['benchmark']:
+
+        R_benchmark = resultsDict['R_benchmark'].flatten()
+
+        np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_barometricBenchmark.txt', np.array([wavelength, orbphase, R_benchmark]).T, header = header)
+
+
+    if outputDict['recordTau']:
+
+        rho_axis = flux.constructAxis(gridsDict, architectureDict, 'rho')
+
+        phi_axis = flux.constructAxis(gridsDict, architectureDict, 'phi')
+        
+        phi, rho = np.meshgrid(phi_axis, rho_axis, indexing = 'ij')
+        phi = phi.flatten()
+        rho = rho.flatten()
+
+        tauDisk = resultsDict['tauDisk'].flatten()
+
+        np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_tau.txt', np.array([phi, rho, tauDisk]).T, header = 'phi grid [rad], rho grid [cm], tau')  
+
+    elapsedTime = datetime.now() - startTime
+
+    print("\nDISHOOM-PROMETHEUS finished, yay! Elapsed time is:", elapsedTime)
+
+    print("The maximal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.min(R)), 5)))
+
+    print("The minimal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.max(R)), 5)))
+
+
+    print(r"""
+    *******  *******           ,/MMM8&&&.         ****     **** ******** ********** **      ** ******** **     **  ********
+    /**////**/**////**     _...MMMMM88&&&&..._    /**/**   **/**/**///// /////**/// /**     /**/**///// /**    /** **////// 
+    /**   /**/**   /**   .:'''MMMMM88&&&&&&''':.  /**//** ** /**/**          /**    /**     /**/**      /**    /**/**       
+    /******* /*******   :     MMMMM88&&&&&&     : /** //***  /**/*******     /**    /**********/******* /**    /**/*********
+    /**////  /**///**    ':...MMMMM88&&&&&&....:  /**  //*   /**/**////      /**    /**//////**/**////  /**    /**////////**
+    /**      /**  //**      `''MMMMM88&&&&'''`    /**   /    /**/**          /**    /**     /**/**      /**    /**       /**
+    /**      /**   //**         'MMM8&&&'         /**        /**/********    /**    /**     /**/********//*******  ******** 
+    //       //     //                            //         // ////////     //     //      // ////////  ///////  ////////  
+    """)
