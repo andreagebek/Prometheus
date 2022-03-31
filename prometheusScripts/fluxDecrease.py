@@ -7,7 +7,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import sys
 import os
-import datetime
+from datetime import datetime
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 sys.path.append(GITPATH) 
@@ -60,42 +60,43 @@ def calculateCLV(rho, R_star, u1, u2):
 
     return 1. - u1 * arg - u2 * arg**2
 
-def calculateRM(phi, rho, wavelengthArray, architectureDict, PHOENIX_output):
-
-    T_starrot = architectureDict['period_starrot']
-    R_star = architectureDict['R_star']
-
-    w_star = PHOENIX_output[0]
-    v_max = 2. * np.pi * R_star / T_starrot
-    w_max = np.max(wavelengthArray * gasprop.calculateDopplerShift(-v_max))
-    w_min = np.min(wavelengthArray * gasprop.calculateDopplerShift(v_max))
-    SEL_w = np.argwhere((w_star > w_min) * (w_star < w_max))[:, 0]
-
-    SEL = np.concatenate((np.array([np.min(SEL_w) - 1]), SEL_w, np.array([np.max(SEL_w) + 1])))
-
-    w_star = w_star[SEL]
-    F_0 = PHOENIX_output[1][SEL]
+def calculateRM(phi, rho, wavelengthArray, architectureDict, Fstar_function):
 
     v_los = geom.calculateStellarLOSvelocity(architectureDict, phi, rho)
     w_shift = gasprop.calculateDopplerShift(v_los)
 
-    F_function = interp1d(w_star, F_0, kind = 'cubic')
-    F_shifted = F_function(wavelengthArray / w_shift) # This contains the shifted flux incident on the exoplanet, instead of shifting the spectra
+    F_shifted = Fstar_function(wavelengthArray / w_shift) # This contains the shifted flux incident on the exoplanet, instead of shifting the spectra
     # at all positions on the stellar surface just read in the spectrum at different wavelengths depending on the position in the spatial grid (phi and rho)
 
     return F_shifted
 
-def getPHOENIX_output(fundamentalsDict, architectureDict):
+def getPHOENIX_output(wavelengthArray, fundamentalsDict, architectureDict):
 
     if fundamentalsDict['RM_effect']:
 
+        T_starrot = architectureDict['period_starrot']
+        R_star = architectureDict['R_star']
+
         PHOENIX_output = stellar.readSpectrum(architectureDict['T_eff'], architectureDict['log_g'], architectureDict['Fe_H'], architectureDict['alpha_Fe'])
     
+        w_star = PHOENIX_output[0]
+        v_max = 2. * np.pi * R_star / T_starrot
+        w_max = np.max(wavelengthArray * gasprop.calculateDopplerShift(-v_max))
+        w_min = np.min(wavelengthArray * gasprop.calculateDopplerShift(v_max))
+        SEL_w = np.argwhere((w_star > w_min) * (w_star < w_max))[:, 0]
+
+        SEL = np.concatenate((np.array([np.min(SEL_w) - 1]), SEL_w, np.array([np.max(SEL_w) + 1])))
+
+        w_starSEL = w_star[SEL]
+        F_0 = PHOENIX_output[1][SEL]
+
+        Fstar_function = interp1d(w_starSEL, F_0, kind = 'cubic')
+
     else:
 
-        PHOENIX_output = None
+        Fstar_function = None
 
-    return PHOENIX_output
+    return Fstar_function
 
 def getFstarIntegrated(wavelengthArray, fundamentalsDict, architectureDict, gridsDict, PHOENIX_output):
     # Return F_star(wavelength, phi, rho) integrated over the stellar disk
@@ -191,7 +192,7 @@ def checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
     return False
 
 
-def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict):
+def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict):
 
     delta_x = 2. * gridsDict['x_border'] / float(gridsDict['x_steps'])
 
@@ -214,7 +215,7 @@ def evaluateChord(point, args): # Function to be multiprocessed
 
     phi, rho, orbphase = point
 
-    delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, PHOENIX_output, FstarIntegrated = args
+    delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function, FstarIntegrated = args
 
     if checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
 
@@ -222,15 +223,19 @@ def evaluateChord(point, args): # Function to be multiprocessed
 
     else:
 
-        tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict)
+        tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict)
 
-    Fstar = getFstar(phi, rho, wavelengthArray, architectureDict, fundamentalsDict, PHOENIX_output)
+    Fstar = getFstar(phi, rho, wavelengthArray, architectureDict, fundamentalsDict, Fstar_function)
 
     singleChord = rho * Fstar * np.exp(-tau) * delta_phi * delta_rho
 
-    return singleChord / FstarIntegrated
+    if outputDict['recordTau']:
 
-def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict):
+        return np.float32(singleChord / FstarIntegrated), np.float32(tau)
+
+    return np.float32(singleChord / FstarIntegrated), None
+
+def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime):
 
     xArray = constructAxis(gridsDict, architectureDict, 'x')
 
@@ -247,33 +252,18 @@ def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDi
     delta_rho = architectureDict['R_star'] / float(gridsDict['rho_steps'])
     delta_phi = 2 * np.pi / float(gridsDict['phi_steps'])
 
-    PHOENIX_output = getPHOENIX_output(fundamentalsDict, architectureDict)
-    FstarIntegrated = getFstarIntegrated(wavelengthArray, fundamentalsDict, architectureDict, gridsDict, PHOENIX_output) # Stellar flux as a function of wavelength, integrated over the stellar disk
+    Fstar_function = getPHOENIX_output(wavelengthArray, fundamentalsDict, architectureDict)
+
+    print('\nPHOENIX spectrum downloaded (if required):', datetime.now() - startTime)
+
+    FstarIntegrated = getFstarIntegrated(wavelengthArray, fundamentalsDict, architectureDict, gridsDict, Fstar_function) # Stellar flux as a function of wavelength, integrated over the stellar disk
+
+    print('Integrated stellar flux calculated:', datetime.now() - startTime)
 
     sigmaLookupDict = gasprop.createLookupAbsorption(xArray, wavelengthArray, GRID, fundamentalsDict, architectureDict, scenarioDict, speciesDict)
 
-    args = (delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, PHOENIX_output, FstarIntegrated)
+    print('Lookup absorption cross section calculated (if required):', datetime.now() - startTime)
+
+    args = (delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function, FstarIntegrated)
 
     return GRID, args
-
-
-def calculateBarometricBenchmark(x, phi, rho, orbphase, wavelength, fundamentalsDict, architectureDict, specificScenarioDict, speciesDict):
-    T = specificScenarioDict['T']
-    P_0 = specificScenarioDict['P_0']
-    mu = specificScenarioDict['mu']
-    R_0 = architectureDict['R_0']
-    M_p = architectureDict['M_p']
-    R_star = architectureDict['R_star']
-
-    H = const.k_B * T * R_0**2 / (const.G * mu * M_p)
-    g = const.G * M_p / R_0**2
-
-    sigma_abs = gasprop.getAbsorptionCrossSection(x, phi, rho, orbphase, wavelength, 'barometric', fundamentalsDict, specificScenarioDict, architectureDict, speciesDict)[:, 0, 0, 0, :]
-    # Absorption cross section for the benchmark cannot depend on the spatial position, i.e. sigma_abs(lambda, t)
-
-    kappa = sigma_abs / mu
-    R_lambda = R_0 + H * (const.euler_mascheroni + np.log(P_0 * kappa / g * np.sqrt(2 * np.pi * R_0 / H)))
-    benchmark_spectrum = (R_star**2 - R_lambda**2) / R_star**2
-
-    return benchmark_spectrum
-

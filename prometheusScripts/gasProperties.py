@@ -229,30 +229,6 @@ def readLineList(key_species, wavelength):
 
     return line_wavelength[SEL_WAVELENGTH], line_gamma[SEL_WAVELENGTH], line_f[SEL_WAVELENGTH]
 
-def readMolecularAbsorption(key_species):
-    # Read a hdf5 file in TauREX format downloaded from the ExoMol project
-    # This file should contain temperature, pressure and wavelength grids,
-    # and aborption cross sections for this 3D-grids
-
-    with h5py.File(os.path.dirname(GITPATH) + '/molecularResources/' + key_species + '.h5', 'r+') as f:
-
-        P = f['p'][:] * 10 # TauREX format is in Pascal, convert to cgs-units. Is it really in Pascal though?
-        T = f['t'][:]   # Temperature in K
-        w = 1. / f['bin_edges'][:] # Wavelength in cm
-        sigma = f['xsecarr'][:] # Absorption cross section in cm^2/molecule
-
-        return P, T, w, sigma
-
-def calculateMolecularAbsorption(phi, rho, orbphase, xArray, wavelengthShifted, chi, key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict):
-
-    P_mol, T_mol, wavelength_mol, sigma_mol = readMolecularAbsorption(key_species)
-    sigma_mol_function = RegularGridInterpolator((P_mol, T_mol, wavelength_mol[::-1]), sigma_mol[:, :, ::-1], bounds_error = False, fill_value = 0.)
-
-    T_Grid = np.ones_like(xArray) * specificScenarioDict['T']
-    P_Grid = const.k_B * T_Grid * getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
-
-    return sigma_mol_function((np.clip(P_Grid, np.min(P_mol), np.max(P_mol)), np.clip(T_Grid, np.min(T_mol), np.max(T_mol)), wavelengthShifted)) * chi
-
 def calculateLineAbsorption(wavelength, line_wavelength, line_gamma, line_f, specificSpeciesDict):
 
     chi = specificSpeciesDict['chi']
@@ -346,15 +322,10 @@ def getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_s
 
         for key_species in speciesDict[key_scenario].keys():
 
-            if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
+            line_wavelength, line_gamma, line_f = readLineList(key_species, wavelengthArray)
 
-                line_wavelength, line_gamma, line_f = readLineList(key_species, wavelengthArray)
-
-                sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])            
-            else:
-
-                sigma_abs += calculateMolecularAbsorption(phi, rho, orbphase, xArray, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)      
-
+            sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])            
+            
         if 'RayleighScatt' in specificScenarioDict.keys():
 
             if specificScenarioDict['RayleighScatt']:
@@ -365,18 +336,13 @@ def getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_s
 
         sigmaLookupFunction, wavelengthHighRes = sigmaLookupDict[key_scenario]
 
-        sigmaLookupUnclipped = sigmaLookupFunction(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Clip because of rounding & fitting errors
+        sigmaLookupUnclipped = sigmaLookupFunction(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Evaluate the lookup absorption cross 
+        #section at Doppler-shifted wavelengths. Clip because of rounding & fitting errors
 
         if np.any(sigmaLookupUnclipped < 0.):
             print('\nWARNING: The absorption cross section is smaller than zero somewhere. This is probably due to an insufficient lookup resolution. \
 The absorption cross section will be clipped to positive values.\n')
 
         sigma_abs = np.clip(sigmaLookupUnclipped, 0., a_max = None)
-
-        for key_species in speciesDict[key_scenario].keys():
-
-            if not 'sigma_v' in speciesDict[key_scenario][key_species].keys():
-
-                sigma_abs += calculateMolecularAbsorption(phi, rho, orbphase, xArray, wavelengthShifted, speciesDict[key_scenario][key_species]['chi'], key_species, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
     
     return sigma_abs
