@@ -309,22 +309,17 @@ Specify the absorption species.
 
 print('\nSpecify the absorbing species and their abundances.\n')
 
-
-PossibleAtomicAbsorbers = list(const.speciesInfoDict.keys())
-PossibleAtomicAbsorbers.append('0')
-
-PossibleAbsorbers = list(const.speciesInfoDict.keys())
-PossibleAbsorbers.extend(['SO2', '0'])
-
-
 speciesDict = {}
 
 
 for key_scenario in scenarioDict.keys():
 
+    PossibleAbsorbers = list(const.speciesInfoDict.keys())
+    PossibleAbsorbers.append('0')
+
     speciesDict[key_scenario] = {}
 
-    if 'T' in scenarioDict[key_scenario].keys():
+    if 'T' in scenarioDict[key_scenario].keys(): # Scenarios that incorporate a temperature
 
         while True:
 
@@ -339,23 +334,23 @@ for key_scenario in scenarioDict.keys():
                 params['chi'] = read_value('Enter the mixing ratio of ' + key_species + ' in the ' + key_scenario + ' scenario:', 
                 0, 1, 1, acceptLowerBorder = True, acceptUpperBorder = True)
 
-            if scenarioDict[key_scenario]['thermBroad'] and key_species in PossibleAtomicAbsorbers: # Velocity dispersion only for atoms/ions
+            if scenarioDict[key_scenario]['thermBroad']: # Velocity dispersion only for atoms/ions
 
                 params['sigma_v'] = np.sqrt(const.k_B * scenarioDict[key_scenario]['T'] / const.speciesInfoDict[key_species][2])
 
-            elif not scenarioDict[key_scenario]['thermBroad'] and key_species in PossibleAtomicAbsorbers:
+            else:
 
                 params['sigma_v'] = 0
 
             speciesDict[key_scenario][key_species] = params
             PossibleAbsorbers.remove(key_species)
 
-    else:
+    else: # Evaporative scenarios (no temperature)
 
         while True:
 
             params = {}
-            key_species = read_str('Enter the name of the absorbing species you want to consider for the ' + key_scenario + ' scenario, or 0 to move on:', PossibleAtomicAbsorbers)
+            key_species = read_str('Enter the name of the absorbing species you want to consider for the ' + key_scenario + ' scenario, or 0 to move on:', PossibleAbsorbers)
             
             if key_species == '0':
                 break
@@ -376,7 +371,7 @@ scenario in km/s:', 1e-3, 1e5, 1e5)
                 params['sigma_v'] = 0
 
             speciesDict[key_scenario][key_species] = params
-            PossibleAtomicAbsorbers.remove(key_species)
+            PossibleAbsorbers.remove(key_species)
 
 
 
@@ -393,8 +388,10 @@ gridsDict['upper_w'] = read_value('Enter the upper wavelength border in Angstrom
 gridsDict['resolution'] = read_value('Enter the resolution of the wavelength grid in Angstrom \
 (default: ' + str((gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 20.) + '):', 1e-6, (gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 2., 1e-8, roundBorders = False)
 
-gridsDict['x_border'] = read_value('Enter the half chord length (x-direction) for the numerical integration along the x-axis in planetary radii:', 0,
-architectureDict['a_p'] / architectureDict['R_0'], architectureDict['R_0'], roundBorders = False)
+gridsDict['x_midpoint'] = read_value('Enter the midpoint of the grid in x-direction in planetary orbital radii:', architectureDict['R_star'] / architectureDict['a_p'], 10.,
+architectureDict['a_p'], roundBorders = False)
+gridsDict['x_border'] = read_value('Enter the half chord length (x-direction) for the numerical integration along the x-axis in planetary radii:',
+0., (gridsDict['x_midpoint'] - architectureDict['R_star']) / architectureDict['R_0'], architectureDict['R_0'], roundBorders = False)
 gridsDict['x_steps'] = read_value('Enter the number of bins for the spatial discretization along the chord (x-direction, default: 20):', 2, 1e6, 1)
 
 gridsDict['phi_steps'] = read_value('Enter the number of bins for the spatial discretization for the polar coordinate (phi-direction, default: 20):', 1, 1e4, 1, acceptLowerBorder = True)
@@ -413,13 +410,6 @@ print('\nFinally, specify some output options.\n')
 outputDict = {}
 
 paramsFilename = read_str('How do you want to name the txt file containing the parameters of this session (enter the file name without the .txt ending)?')
-
-if 'barometric' in scenarioDict.keys():
-    outputDict['benchmark'] = read_str('Do you want to record the analytical benchmark for the barometric scenario?', ['yes', 'no'])
-
-else:
-    outputDict['benchmark'] = False
-
 
 outputDict['recordTau'] = read_str('Do you want to record the optical depth for all chords of the spatial grid at the wavelength and orbital phase with the largest flux decrease?', ['yes', 'no'])
 
