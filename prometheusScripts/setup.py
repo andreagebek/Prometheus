@@ -194,6 +194,8 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number']) == 'pressu
         params['a_torus'] = read_value('Enter the distance between the center of the torus and the center of the exoplanet in Jovian radii:', 0.01, 1000, const.R_J)
         params['v_ej'] = read_value('Enter the ejection velocity (which sets the torus scale height) of the particles from the torus in km/s:', 1e-2, 1e3, 1e5)
 
+    elif scenario_name == 'plasma':
+        pass
 
     if 'T' in params.keys():
 
