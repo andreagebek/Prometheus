@@ -379,26 +379,29 @@ scenario in km/s:', 1e-3, 1e5, 1e5)
 Grid parameters
 """
 
-print('\nAlmost done! Specify the discretization parameters for the wavelength and spatial grids. Default values give an expected runtime of ~10s.\n')
+print('\nAlmost done! Specify the discretization parameters for the wavelength and spatial grids. \n')
 
 gridsDict = {}
 
 gridsDict['lower_w'] = read_value('Enter the lower wavelength border in Angstrom:', 500, 55000, 1e-8, roundBorders = False)
 gridsDict['upper_w'] = read_value('Enter the upper wavelength border in Angstrom:', gridsDict['lower_w'] * 1e8, 55000, 1e-8, roundBorders = False)
-gridsDict['resolution'] = read_value('Enter the resolution of the wavelength grid in Angstrom \
-(default: ' + str((gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 20.) + '):', 1e-6, (gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 2., 1e-8, roundBorders = False)
+gridsDict['resolution'] = read_value('Enter the resolution of the wavelength grid in Angstrom:', 1e-6, (gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 2., 1e-8, roundBorders = False)
 
-gridsDict['x_midpoint'] = read_value('Enter the midpoint of the grid in x-direction in planetary orbital radii:', architectureDict['R_star'] / architectureDict['a_p'], 10.,
+gridsDict['x_midpoint'] = read_value('Enter the midpoint of the grid in x-direction in planetary orbital radii (default: 1):', architectureDict['R_star'] / architectureDict['a_p'], 10.,
 architectureDict['a_p'], roundBorders = False)
 gridsDict['x_border'] = read_value('Enter the half chord length (x-direction) for the numerical integration along the x-axis in planetary radii:',
 0., (gridsDict['x_midpoint'] - architectureDict['R_star']) / architectureDict['R_0'], architectureDict['R_0'], roundBorders = False)
-gridsDict['x_steps'] = read_value('Enter the number of bins for the spatial discretization along the chord (x-direction, default: 20):', 2, 1e6, 1)
+gridsDict['x_steps'] = read_value('Enter the number of bins for the spatial discretization along the chord (x-direction):', 2., 1e6, 1.)
 
-gridsDict['phi_steps'] = read_value('Enter the number of bins for the spatial discretization for the polar coordinate (phi-direction, default: 20):', 1, 1e4, 1, acceptLowerBorder = True)
-gridsDict['rho_steps'] = read_value('Enter the number of bins for the spatial discretization in z-direction (default: 20):', 2, 1e6, 1)
+gridsDict['phi_steps'] = read_value('Enter the number of bins for the spatial discretization for the polar coordinate (phi-direction):', 1., 1e4, 1., acceptLowerBorder = True)
+gridsDict['rho_steps'] = read_value('Enter the number of bins for the spatial discretization in radial direction (rho-direction):', 2., 1e6, 1.)
+if fundamentalsDict['RM_effect']: # If the RM-effect is active you have to integrate numerically over the entire stellar disk
+    gridsDict['upper_rho'] = architectureDict['R_star']
+else:
+    gridsDict['upper_rho'] = read_value('Enter the upper boundary of the radial grid in stellar radii (default: 1):', 0., 1., architectureDict['R_star'], acceptUpperBorder = True)
 
 gridsDict['orbphase_border'] = read_value('Enter the orbital phase at which the light curve calculation starts and stops:', 0, 0.5, 2 * np.pi, acceptLowerBorder = True, acceptUpperBorder = True)
-gridsDict['orbphase_steps'] = read_value('Enter the number of bins for the orbital phase discretization (default: 20):', 1, 1e4, 1, acceptLowerBorder = True)
+gridsDict['orbphase_steps'] = read_value('Enter the number of bins for the orbital phase discretization:', 1., 1e4, 1., acceptLowerBorder = True)
 
 
 """

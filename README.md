@@ -9,9 +9,10 @@ by various atoms and ions is considered (with line lists from NIST).
 
 ## Installation
 Note that this code is written in python 3.8.3. Compatibility testing has so far been very limited.
-1. Run ```git clone https://github.com/andreagebek/Prometheus.git``` in your terminal in a directory of your choice. This will
-create the 'Prometheus' base folder.
-2. Create the following subfolders in the Prometheus folder: setupFiles, output, figures (```mkdir setupFiles output figures```).
+1. Run ```git clone https://github.com/andreagebek/Prometheus.git``` in your terminal in a directory of your choice (e.g. 'exoplanets'). This will
+create the 'Prometheus' base folder in the 'exoplanets' folder.
+2. Create the following subfolders in the 'exoplanets' folder: setupFiles, output, figures (```mkdir setupFiles output figures```). Now,
+these three folders and the 'Prometheus' folder should be on the same level.
 
 
 ## Usage
