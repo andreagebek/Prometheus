@@ -47,7 +47,7 @@ if __name__ == '__main__':
     gridsDict = param['Grids']
     outputDict = param['Output']
 
-    GRID, args = flux.prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime)
+    GRID, args, FstarIntegrated, FstarUpper = flux.prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime)
 
     N_cores = mp.cpu_count()
 
@@ -62,13 +62,11 @@ if __name__ == '__main__':
     pool.close()
     pool.join()
 
-    print('Main calculation finished:', datetime.now() - startTime)
+    print('Main calculation for the optical depths of all chords finished:', datetime.now() - startTime)
 
-    Rarray = np.array(RESULTS_R).reshape((int(gridsDict['phi_steps']) * int(gridsDict['rho_steps']), int(gridsDict['orbphase_steps']), len(args[3])))
-    Runflattened = np.sum(Rarray, axis = 0).T # Sum over rho and phi coordinates
-    index_max = np.unravel_index(np.argmin(Runflattened, axis = None), Runflattened.shape)
+    R, index_max = flux.sumOverChords(RESULTS_R, gridsDict, FstarIntegrated, FstarUpper)
 
-    R = Runflattened.flatten()
+    print('Sum over chords finished:', datetime.now() - startTime)
 
     """
     Store the output in .txt files
@@ -89,16 +87,7 @@ if __name__ == '__main__':
     
     if outputDict['recordTau']:
 
-        rho_axis = flux.constructAxis(gridsDict, architectureDict, 'rho')
-
-        phi_axis = flux.constructAxis(gridsDict, architectureDict, 'phi')
-        
-        phi, rho = np.meshgrid(phi_axis, rho_axis, indexing = 'ij')
-        phi = phi.flatten()
-        rho = rho.flatten()
-
-        TAUarray = np.array(RESULTS_TAU).reshape((int(gridsDict['phi_steps']), int(gridsDict['rho_steps']), int(gridsDict['orbphase_steps']), len(args[3])))
-        tauDisk = TAUarray[:, :, index_max[1], index_max[0]].flatten()
+        phi, rho, tauDisk = flux.getTau(RESULTS_TAU, architectureDict, gridsDict, index_max)
 
         np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_tau.txt', np.array([phi, rho, tauDisk]).T, header = 'phi grid [rad], rho grid [cm], tau')  
     
