@@ -24,37 +24,37 @@ def constructAxis(gridsDict, architectureDict, axisName): # For spatial axes, re
         x_midpoint = gridsDict['x_midpoint']
         x_border = gridsDict['x_border']
         x_steps = gridsDict['x_steps']
-<<<<<<< HEAD
+
         x_axis = np.linspace(x_midpoint - x_border, x_midpoint + x_border, int(x_steps), endpoint=False) + x_border / float(x_steps)  
-=======
+
         x_axis = np.linspace(x_midpoint - x_border, x_midpoint + x_border, int(x_steps), endpoint = False, retstep = True)
         list(x_axis)[0] += x_border / float(x_steps)
->>>>>>> 602ada49db7aaa7c59a685b2aaf2d77e358701a5
+
 
         return x_axis
 
     elif axisName == 'rho':   
 
         rho_steps = gridsDict['rho_steps']
-<<<<<<< HEAD
+
         rho_axis = np.linspace(0, architectureDict['R_star'], int(rho_steps), endpoint=False) + 0.5 * architectureDict['R_star'] / float(rho_steps)
-=======
+
         upper_rho = gridsDict['upper_rho']
         rho_axis = np.linspace(0, upper_rho, int(rho_steps), endpoint = False, retstep = True)
         list(rho_axis)[0] += 0.5 * upper_rho / float(rho_steps)
->>>>>>> 602ada49db7aaa7c59a685b2aaf2d77e358701a5
+
 
         return rho_axis
 
     elif axisName == 'phi':
 
         phi_steps = gridsDict['phi_steps']
-<<<<<<< HEAD
+
         phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps), endpoint=False) + np.pi / float(phi_steps)
-=======
+
         phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps), endpoint = False, retstep = True)
         list(phi_axis)[0] += np.pi / float(phi_steps)
->>>>>>> 602ada49db7aaa7c59a685b2aaf2d77e358701a5
+
 
         return phi_axis
 
