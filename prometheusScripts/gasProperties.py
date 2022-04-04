@@ -17,6 +17,7 @@ GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 sys.path.append(GITPATH)
 import prometheusScripts.constants as const
 import prometheusScripts.geometryHandler as geom
+import prometheusScripts.plasmaConv as plasm
 import datetime
 
 startTime = datetime.datetime.now()
@@ -52,6 +53,11 @@ def getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioD
         a, z = geom.getTorusCoords(architectureDict, phi, rho, orbphase, xArray)
         n = getTorus_n(a, z, specificScenarioDict, architectureDict)
 
+    elif key_scenario == 'plasma':
+        pass
+        
+        
+    
     else:
 
         print('This key for a number density structure does not exist. The program exits now.')
