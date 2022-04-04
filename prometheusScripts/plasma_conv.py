@@ -23,7 +23,12 @@ SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 PARENTPATH = os.path.dirname(os.path.dirname(GITPATH))
 
+import prometheusScripts.geometryHandler as geom
+import prometheusScripts.fluxDecrease as flux
+
+
 
 def plasmagrid(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict):
     amitisfile = scenarioDict['amitisFilename']
     f = h5py.File(amitisfile + '.h5')
+    

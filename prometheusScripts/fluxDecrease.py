@@ -24,21 +24,21 @@ def constructAxis(gridsDict, architectureDict, axisName):
         x_midpoint = gridsDict['x_midpoint']
         x_border = gridsDict['x_border']
         x_steps = gridsDict['x_steps']
-        x_axis = np.linspace(x_midpoint - x_border, x_midpoint + x_border, int(x_steps) + 1)[:-1] + x_border / float(x_steps)  
+        x_axis = np.linspace(x_midpoint - x_border, x_midpoint + x_border, int(x_steps), endpoint=False) + x_border / float(x_steps)  
 
         return x_axis
 
     elif axisName == 'rho':   
 
         rho_steps = gridsDict['rho_steps']
-        rho_axis = np.linspace(0, architectureDict['R_star'], int(rho_steps) + 1)[:-1] + 0.5 * architectureDict['R_star'] / float(rho_steps)
+        rho_axis = np.linspace(0, architectureDict['R_star'], int(rho_steps), endpoint=False) + 0.5 * architectureDict['R_star'] / float(rho_steps)
 
         return rho_axis
 
     elif axisName == 'phi':
 
         phi_steps = gridsDict['phi_steps']
-        phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps) + 1)[:-1] + np.pi / float(phi_steps)
+        phi_axis = np.linspace(0, 2 * np.pi, int(phi_steps), endpoint=False) + np.pi / float(phi_steps)
 
         return phi_axis
 

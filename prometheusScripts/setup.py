@@ -129,7 +129,7 @@ Scenarios for the spatial distribution of the medium
 print('\nNow, specifiy the spatial distribution of the absorbing medium, i.e. the structure of the atmosphere/exosphere.\n')
 
 scenarioDict = {}
-PossibleScenarios = ['barometric', 'hydrostatic', 'escaping', 'exomoon', 'torus', '0'] # Possible scenarios
+PossibleScenarios = ['barometric', 'hydrostatic', 'escaping', 'exomoon', 'torus', 'plasma', '0'] # Possible scenarios
 
 while True:
 
@@ -401,7 +401,6 @@ gridsDict['rho_steps'] = read_value('Enter the number of bins for the spatial di
 
 gridsDict['orbphase_border'] = read_value('Enter the orbital phase at which the light curve calculation starts and stops:', 0, 0.5, 2 * np.pi, acceptLowerBorder = True, acceptUpperBorder = True)
 gridsDict['orbphase_steps'] = read_value('Enter the number of bins for the orbital phase discretization (default: 20):', 1, 1e4, 1, acceptLowerBorder = True)
-
 
 """
 Additional output
