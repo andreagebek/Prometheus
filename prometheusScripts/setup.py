@@ -96,7 +96,7 @@ def read_str(text, options = 0):
 Fundamentals
 """
 
-fundamentalsDict = {'PlanetarySource': False, 'ExomoonSource': False, 'DopplerPlanetRotation': False}
+fundamentalsDict = {'PlanetarySource': False, 'ExomoonSource': False, 'DopplerPlanetRotation': False, 'AmitisSource': False, 'ExactSigmaAbs': True}
 
 print(r"""
  *******  *******           ,/MMM8&&&.         ****     **** ******** ********** **      ** ******** **     **  ********
@@ -116,11 +116,7 @@ fundamentalsDict['CLV_variations'] = read_str('Do you want to take center-to-lim
 fundamentalsDict['RM_effect'] = read_str('Do you want to take the Rossiter-McLaughlin-Effect into account (note that this means that you \
 have to provide additional information about the host star to specifiy its spectrum)?', ['yes', 'no'])
 fundamentalsDict['DopplerOrbitalMotion'] = read_str('Do you want to consider the Doppler shifts due to planetary/exomoon orbital motion?', ['yes', 'no'])
-fundamentalsDict['ExactSigmaAbs'] = read_str('Do you want to calculate the absorption cross section exactly (NOT RECOMMENDED, makes the code very slow)?', ['yes', 'no'])
 
-if not fundamentalsDict['ExactSigmaAbs']:
-    fundamentalsDict['LookupResolution'] = read_value('Enter the resolution for the lookup table in Angstrom. Note that this effectively corresponds to a velocity resolution, \
-to resolve a velocity of 1 km/s at 6000 Angstrom a lookup table resolution of 0.02 Angstrom is needed.', 1e-5, 100, 1e-8)
 
 """
 Scenarios for the spatial distribution of the medium
@@ -129,7 +125,7 @@ Scenarios for the spatial distribution of the medium
 print('\nNow, specifiy the spatial distribution of the absorbing medium, i.e. the structure of the atmosphere/exosphere.\n')
 
 scenarioDict = {}
-PossibleScenarios = ['barometric', 'hydrostatic', 'escaping', 'exomoon', 'torus', 'plasma', '0'] # Possible scenarios
+PossibleScenarios = ['barometric', 'hydrostatic', 'escaping', 'exomoon', 'torus', 'AmitisPlasma', '0'] # Possible scenarios
 
 while True:
 
@@ -194,8 +190,10 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number']) == 'pressu
         params['a_torus'] = read_value('Enter the distance between the center of the torus and the center of the exoplanet in Jovian radii:', 0.01, 1000, const.R_J)
         params['v_ej'] = read_value('Enter the ejection velocity (which sets the torus scale height) of the particles from the torus in km/s:', 1e-2, 1e3, 1e5)
 
-    elif scenario_name == 'plasma':
-        params['amitisFilename'] = read_str('Enter the name of the AMITIS output file (located in "amitis_outputs" folder, without the .5h ending:')
+    elif scenario_name == 'AmitisPlasma':
+
+        params['AmitisFilename'] = read_str('Enter the name of the AMITIS output file (located in "amitis_outputs" folder, without the .5h ending:')
+        fundamentalsDict['AmitisSource'] = True
 
     if 'T' in params.keys():
 
@@ -215,6 +213,15 @@ if len(scenarioDict) == 0:
     print('You have not added any absorption sources! Your loss. PROMETHEUS exits now.')
     sys.exit()
 
+
+
+if not fundamentalsDict['AmitisSource']: # If there is an Amitis source, currently need to calculate the absorption cross section exactly
+
+    fundamentalsDict['ExactSigmaAbs'] = read_str('Do you want to calculate the absorption cross section exactly (NOT RECOMMENDED, makes the code very slow)?', ['yes', 'no'])
+
+if not fundamentalsDict['ExactSigmaAbs']:
+    fundamentalsDict['LookupResolution'] = read_value('Enter the resolution for the lookup table in Angstrom. Note that this effectively corresponds to a velocity resolution, \
+to resolve a velocity of 1 km/s at 6000 Angstrom a lookup table resolution of 0.02 Angstrom is needed.', 1e-5, 100, 1e-8)
 
 """
 Architecture
@@ -359,8 +366,14 @@ for key_scenario in scenarioDict.keys():
 
             else:
 
-                params['chi'] = read_value('Enter the number of absorbing ' + key_species + ' atoms/ions in the ' + key_scenario + ' scenario:', 
-                0, 1e50, 1, acceptLowerBorder = True, acceptUpperBorder = True)
+                if key_scenario == 'AmitisPlasma': # Set abundance to one because the full number density of each species is provided as AMITIS output
+
+                    params['chi'] = 1.
+
+                else:
+
+                    params['chi'] = read_value('Enter the number of absorbing ' + key_species + ' atoms/ions in the ' + key_scenario + ' scenario:', 
+                    0, 1e50, 1, acceptLowerBorder = True, acceptUpperBorder = True)
 
 
             if scenarioDict[key_scenario]['thermBroad']:
@@ -401,7 +414,6 @@ if fundamentalsDict['RM_effect']: # If the RM-effect is active you have to integ
     gridsDict['upper_rho'] = architectureDict['R_star']
 else:
     gridsDict['upper_rho'] = read_value('Enter the upper boundary of the radial grid in stellar radii (default: 1):', 0., 1., architectureDict['R_star'], acceptUpperBorder = True)
-
 gridsDict['orbphase_border'] = read_value('Enter the orbital phase at which the light curve calculation starts and stops:', 0, 0.5, 2 * np.pi, acceptLowerBorder = True, acceptUpperBorder = True)
 gridsDict['orbphase_steps'] = read_value('Enter the number of bins for the orbital phase discretization:', 1., 1e4, 1., acceptLowerBorder = True)
 

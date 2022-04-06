@@ -221,7 +221,7 @@ def checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
     return False
 
 
-def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict):
+def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict, AmitisDensityFunction):
 
     delta_x = 2. * gridsDict['x_border'] / float(gridsDict['x_steps'])
 
@@ -231,11 +231,28 @@ def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundament
 
         specificScenarioDict = scenarioDict[key_scenario]
 
-        n = gasprop.getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)     
+        if key_scenario == 'AmitisPlasma': # Loop over species for this scenario
 
-        sigma_abs = gasprop.getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, sigmaLookupDict)
+            for key_species in speciesDict['AmitisPlasma'].keys():
 
-        tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)
+                # @ LUCIAN: Get the number density here for the required species from the Amitis output (interpolated and stored from a function)
+                n = 0.
+
+                sigma_v = speciesDict[key_scenario][key_species]['sigma_v']
+
+                speciesDictAmitis = {'AmitisPlasma': {key_species: {'chi': 1., 'sigma_v': sigma_v}}} # Set up a species dictionary with a single species
+                
+                sigma_abs = gasprop.getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDictAmitis, sigmaLookupDict)
+
+                tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)
+
+        else:
+
+            n = gasprop.getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict, AmitisDensityFunction)     
+
+            sigma_abs = gasprop.getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, sigmaLookupDict)
+
+            tau += delta_x * np.sum(np.multiply(sigma_abs, n), axis = 1)
 
     return tau # tau(lambda)
 
@@ -244,7 +261,7 @@ def evaluateChord(point, args): # Function to be multiprocessed
 
     phi, rho, orbphase = point
 
-    delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function = args
+    delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function, AmitisDensityFunction = args
 
     if checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
 
@@ -252,7 +269,7 @@ def evaluateChord(point, args): # Function to be multiprocessed
 
     else:
 
-        tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict)
+        tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict, AmitisDensityFunction)
 
     Fstar = getFstar(phi, rho, wavelengthArray, architectureDict, fundamentalsDict, Fstar_function)
 
@@ -290,7 +307,18 @@ def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDi
 
     print('Lookup absorption cross section calculated (if required):', datetime.now() - startTime)
 
-    args = (delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function)
+    if fundamentalsDict['AmitisSource']:
+
+        # @LUCIAN: Call function from plasma_conv.py which reads in the h5py file and outputs a function (similar to Fstar_function in line 116 in this file).
+        # This function then should take cartesian coordinates (x,y,z) as input and output the number density at that location.
+        # If we have multiple species in the Amitis output we should probably have a dictionary of functions.
+
+    else:
+
+        AmitisDensityFunction = None
+
+    args = (delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict,
+    Fstar_function, AmitisDensityFunction)
 
     return GRID, args, FstarIntegrated, FstarUpper
 
