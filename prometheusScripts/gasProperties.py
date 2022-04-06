@@ -54,8 +54,8 @@ def getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioD
         n = getTorus_n(a, z, specificScenarioDict, architectureDict)
 
     elif key_scenario == 'plasma':
-        pass
         
+        n = plasm.plasmaGrid(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)
         
     
     else:
