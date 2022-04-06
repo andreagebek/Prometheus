@@ -14,23 +14,18 @@ import h5py
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 PARENTPATH = os.path.dirname(GITPATH)
+
 sys.path.append(GITPATH)
 
 import prometheusScripts.constants as const
 from scipy.interpolate import RegularGridInterpolator
 
-SCRIPTPATH = os.path.realpath(__file__)
-GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
-PARENTPATH = os.path.dirname(os.path.dirname(GITPATH))
 
-import prometheusScripts.geometryHandler as geom
-import prometheusScripts.fluxDecrease as flux
+def plasmaGrid(phi, rho, orbphase, xArray, key_species, scenarioDict, architectureDict, fundamentalsDict):
 
-
-
-def plasmaGrid(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict):
-    amitisfile = specificScenarioDict['amitisFilename']
-    f = h5py.File(amitisfile + '.h5')
+    amitisfile = scenarioDict['AmitisPlasma']['AmitisFilename']
+    
+    f = h5py.File(PARENTPATH + '/amitis_outputs/' + amitisfile + '.h5')
     
     nx    = f.attrs["nx"]             # Number of grid cells along X
     ny    = f.attrs["ny"]             # Number of grid cells along Y
@@ -51,7 +46,27 @@ def plasmaGrid(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, a
     z_axis = (np.linspace(zmin, zmax, nz, endpoint=False) +
              (np.abs(zmin) + np.abs(zmax))/(2*float(nz)))
     
-    rho_tot = f["rho02"][:] + f["rho03"][:]        # total charge density [C/m^3]
-    den_tot = rho_tot/1.6e-19        # total number density [#/m^3]
     
-    pol_func = RegularGridInterpolator((x_axis, y_axis, z_axis), den_tot, fill_value=0)
+    s = []
+    for keys in f.attrs.keys():
+        
+        if keys.startswith('s') and 'name' in keys:
+            
+            s.append(f.attrs[keys].decode('UTF-8'))
+    try:
+        
+        key_species_name = "rho" + "%02d"%(s.index(key_species) + 1)
+        
+    except ValueError:
+        
+        print(f'\nThe element ({key_species}) you wish to include could not be found in the Amitis file.' +
+              ' Please specify the names correctly. PROMETHEUS exits now.')
+        
+        sys.exit()
+
+    rho = f[key_species_name][:]          # total charge density [C/m^3]
+    den = rho/1.6e-19                       # total number density [#/m^3]
+    
+    pol_func = RegularGridInterpolator((x_axis, y_axis, z_axis), den, fill_value=0)
+    
+    return pol_func

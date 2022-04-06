@@ -16,6 +16,7 @@ import prometheusScripts.constants as const
 import prometheusScripts.geometryHandler as geom
 import prometheusScripts.gasProperties as gasprop
 import prometheusScripts.stellarSpectrum as stellar
+import prometheusScripts.plasmaConv as plasma
 
 def constructAxis(gridsDict, architectureDict, axisName): # For spatial axes, return both the grid and the spacing (difference between grid points)
 
@@ -221,7 +222,7 @@ def checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
     return False
 
 
-def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict, AmitisDensityFunction):
+def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict, AmitisDensityFunctionDict):
 
     delta_x = 2. * gridsDict['x_border'] / float(gridsDict['x_steps'])
 
@@ -248,7 +249,7 @@ def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundament
 
         else:
 
-            n = gasprop.getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict, AmitisDensityFunction)     
+            n = gasprop.getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict, AmitisDensityFunctionDict)     
 
             sigma_abs = gasprop.getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, sigmaLookupDict)
 
@@ -261,7 +262,7 @@ def evaluateChord(point, args): # Function to be multiprocessed
 
     phi, rho, orbphase = point
 
-    delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function, AmitisDensityFunction = args
+    delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function, AmitisDensityFunctionDict = args
 
     if checkBlock(phi, rho, orbphase, architectureDict, fundamentalsDict):
 
@@ -269,7 +270,7 @@ def evaluateChord(point, args): # Function to be multiprocessed
 
     else:
 
-        tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict, AmitisDensityFunction)
+        tau = calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, sigmaLookupDict, AmitisDensityFunctionDict)
 
     Fstar = getFstar(phi, rho, wavelengthArray, architectureDict, fundamentalsDict, Fstar_function)
 
@@ -308,17 +309,22 @@ def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDi
     print('Lookup absorption cross section calculated (if required):', datetime.now() - startTime)
 
     if fundamentalsDict['AmitisSource']:
-
+        params = {}
         # @LUCIAN: Call function from plasma_conv.py which reads in the h5py file and outputs a function (similar to Fstar_function in line 116 in this file).
         # This function then should take cartesian coordinates (x,y,z) as input and output the number density at that location.
         # If we have multiple species in the Amitis output we should probably have a dictionary of functions.
-
+        for key_species in speciesDict['AmitisPlasma'].keys():
+            
+            params[key_species] = plasma.plasmaGrid(phiArray, rhoArray, orbphaseArray, xArray, key_species, scenarioDict, architectureDict, fundamentalsDict)
+            
+        AmitisDensityFunctionDict = params
+        
     else:
 
-        AmitisDensityFunction = None
+        AmitisDensityFunctionDict = None
 
     args = (delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict,
-    Fstar_function, AmitisDensityFunction)
+    Fstar_function, AmitisDensityFunctionDict)
 
     return GRID, args, FstarIntegrated, FstarUpper
 
