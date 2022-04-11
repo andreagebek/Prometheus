@@ -9,6 +9,7 @@ import numpy as np
 import json
 import sys
 import os
+import h5py
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 PARENTPATH = os.path.dirname(GITPATH)
@@ -241,7 +242,21 @@ systemname = read_str('Enter the name of the exoplanetary system or zero if para
 if systemname == '0':
 
     architectureDict['R_star'] = read_value('Enter the radius of the host star in solar radii:', 1e-5, 1e5, const.R_sun)
-    architectureDict['R_0'] = read_value('Enter the radius of the exoplanet in Jupiter radii:', 1e-5, 1e5, const.R_J)
+    
+    if fundamentalsDict['AmitisSource']:
+        
+        if read_str('Looks like you are using an AMITIS output file. Want to import the planet size?', ['yes', 'no']):
+           
+            amitisfile = scenarioDict['AmitisPlasma']['AmitisFilename']
+    
+            f = h5py.File(PARENTPATH + '/amitis_outputs/' + amitisfile + '.h5', 'r')
+           
+            architectureDict['R_0'] = f.attrs['obs_radius'] * 100 #conversion to cgs
+            
+    else:
+        
+        architectureDict['R_0'] = read_value('Enter the radius of the exoplanet in Jupiter radii:', 1e-5, 1e5, const.R_J)
+    
     architectureDict['M_p'] = read_value('Enter the mass of the exoplanet in Jupiter masses:', 1e-5, 1e3, const.M_J)
     architectureDict['a_p'] = read_value('Enter the orbital distance between planet and star in AU:', 1e-5, 1e3, const.AU)
     architectureDict['M_star'] = read_value('Enter the mass of the host star in solar masses:', 1e-5, 1e10, const.M_sun)

@@ -236,8 +236,13 @@ def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundament
 
             for key_species in speciesDict['AmitisPlasma'].keys():
 
-                # @ LUCIAN: Get the number density here for the required species from the Amitis output (interpolated and stored from a function)
-                n = 0.
+                specAmitisDensFunc = AmitisDensityFunctionDict[key_species]
+                
+                y, z = geom.getCartesianFromCylinder(phi, rho)
+                
+                yArray, zArray = np.full(xArray.shape, y), np.full(xArray.shape, z)
+                
+                n = specAmitisDensFunc(np.stack((xArray - gridsDict['x_midpoint'], yArray, zArray), axis=1))
 
                 sigma_v = speciesDict[key_scenario][key_species]['sigma_v']
 
@@ -315,7 +320,9 @@ def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDi
         # If we have multiple species in the Amitis output we should probably have a dictionary of functions.
         for key_species in speciesDict['AmitisPlasma'].keys():
             
-            params[key_species] = plasma.plasmaGrid(phiArray, rhoArray, orbphaseArray, xArray, key_species, scenarioDict, architectureDict, fundamentalsDict)
+            
+            
+            params[key_species] = plasma.plasmaGrid(key_species, scenarioDict, architectureDict, fundamentalsDict)
             
         AmitisDensityFunctionDict = params
         
