@@ -40,7 +40,7 @@ of the planet's R_0.
 plotMeanSpectrum = True # Plot the spectrum averaged over all orbital phases between planetary ingress and egress
 plotSpectra = True  # Plot the spectra at all orbital phases
 plotBenchmarkSpectra = True # Plot barometric benchmark spectra at all orbital phases (only if the barometric benchmark option is True in the setup file)
-Normalize = False # Do a quick normalization of the spectra
+Normalize = True # Do a quick normalization of the spectra
 
 paramsFilename = sys.argv[1]
 
@@ -57,7 +57,7 @@ R_star = architectureDict['R_star']
 R_0 = architectureDict['R_0']
 a_p = architectureDict['a_p']
 
-benchmark = param['Output']['benchmark']
+benchmark = False#param['Output']['benchmark']
 
 LightcurveFile = np.loadtxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt')
 
