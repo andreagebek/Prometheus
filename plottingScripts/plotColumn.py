@@ -25,6 +25,8 @@ import prometheusScripts.geometryHandler as geom
 import prometheusScripts.gasProperties as gasprop
 import prometheusScripts.fluxDecrease as flux
 
+from datetime import datetime
+
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
 matplotlib.rcParams['xtick.minor.size'] = 6
@@ -53,30 +55,69 @@ scenarioDict = param['Scenarios']
 speciesDict = param['Species']
 gridsDict = param['Grids']
 fundamentalsDict = param['Fundamentals']
+outputDict = param['Output']
+
+startTime = datetime.now()
 
 """
 Calculate the number density of each species by summing it over all scenarios
 """
 
-x, phi, rho, orbphase = flux.constructSpatialGrid(gridsDict, architectureDict)
+GRID, args, FstarIntegrated, FstarUpper = flux.prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime)
+
+phi, rho, orbphase = GRID.T
+
+delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function, AmitisDensityFunctionDict = args
 
 n_speciesDict = {}
 
 for key_scenario in scenarioDict.keys():
 
-    n_total = gasprop.getNumberDensity(x, phi, rho, orbphase, key_scenario, scenarioDict[key_scenario], architectureDict, fundamentalsDict)
+    specificScenarioDict = scenarioDict[key_scenario]
+    
+    if key_scenario == 'AmitisPlasma': # Loop over species for this scenario
 
-    for key_species in speciesDict[key_scenario].keys():
-
-        n_species = n_total * speciesDict[key_scenario][key_species]['chi']
-
-        if key_species in n_speciesDict:
+        for key_species in speciesDict['AmitisPlasma'].keys():
             
-            n_speciesDict[key_species] += n_species
+            specAmitisDensFunc = AmitisDensityFunctionDict[key_species]
+            
+            n_species = np.empty((len(GRID), len(xArray)))
+            
+            for idx in range(len(GRID)):
+                
+                y, z = geom.getCartesianFromCylinder(phi[idx], rho[idx])
+                
+                yArray, zArray = np.full(xArray.shape, y), np.full(xArray.shape, z)
+                
+                # substracting the midpoint to set the center of the coordinate system
+                n_species[idx] = (specAmitisDensFunc(np.stack((xArray - gridsDict['x_midpoint'], yArray, zArray), axis=1)))
+    
+            if key_species in n_speciesDict:
+                
+                n_speciesDict[key_species] += n_species
+    
+            else:
+    
+                n_speciesDict[key_species] = n_species
 
-        else:
+    else:
+        
+        # THIS NEEDS TO BE FIXED STILL
+        
+        n_total = gasprop.getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict, AmitisDensityFunctionDict)     
 
-            n_speciesDict[key_species] = n_species
+        for key_species in speciesDict[key_scenario].keys():
+
+            n_species = n_total * speciesDict[key_scenario][key_species]['chi']
+    
+            if key_species in n_speciesDict:
+                
+                n_speciesDict[key_species] += n_species
+    
+            else:
+    
+                n_speciesDict[key_species] = n_species
+
 
 """
 Calculate the line-of-sight column by integrating along the x-axis
@@ -90,7 +131,7 @@ speciesList = []
 
 for key_species in n_speciesDict.keys():
 
-    N_speciesDict[key_species] = delta_x * np.sum(n_speciesDict[key_species], axis = 0)
+    N_speciesDict[key_species] = delta_x * np.sum(n_speciesDict[key_species], axis = 1)
     speciesList.append(key_species)
 
 """
@@ -110,10 +151,7 @@ def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs): # Add colorbar to a
 R_0 = architectureDict['R_0']
 R_star = architectureDict['R_star']
 
-y, z = geom.getCartesianFromCylinder(0, phi, rho)[1:] # x is not used here
-
-y = y[0, :, :, 0].flatten() # Create a 1D-array with all the different y-coordinates of the 2D-grid (ignore x-coordinate and orbital phase)
-z = z[0, :, :, 0].flatten() # Same for z-coordinate
+y, z = geom.getCartesianFromCylinder(phi, rho) # x is not used here
 
 """
 Plot single figure if there is no time dependency,
