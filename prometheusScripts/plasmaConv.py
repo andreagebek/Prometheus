@@ -21,11 +21,13 @@ import prometheusScripts.constants as const
 from scipy.interpolate import RegularGridInterpolator
 
 
-def plasmaGrid(phi, rho, orbphase, xArray, key_species, scenarioDict, architectureDict, fundamentalsDict):
+def plasmaGrid(key_species, scenarioDict, architectureDict, fundamentalsDict):
 
     amitisfile = scenarioDict['AmitisPlasma']['AmitisFilename']
     
-    f = h5py.File(PARENTPATH + '/amitis_outputs/' + amitisfile + '.h5')
+    f = h5py.File(PARENTPATH + '/amitis_outputs/' + amitisfile + '.h5', 'r')
+    
+    # set up grid for interpolation
     
     nx    = f.attrs["nx"]             # Number of grid cells along X
     ny    = f.attrs["ny"]             # Number of grid cells along Y
@@ -38,14 +40,16 @@ def plasmaGrid(phi, rho, orbphase, xArray, key_species, scenarioDict, architectu
     zmax  = f.attrs["zmax"]
     
     x_axis = (np.linspace(xmin, xmax, nx, endpoint=False) +
-         (np.abs(xmin) + np.abs(xmax))/(2*float(nx)))
+             (np.abs(xmin) + np.abs(xmax))/(2*float(nx))) * 100 #SI to cgs
 
     y_axis = (np.linspace(ymin, ymax, ny, endpoint=False) +
-             (np.abs(ymin) + np.abs(ymax))/(2*float(ny)))
-    
+             (np.abs(ymin) + np.abs(ymax))/(2*float(ny))) * 100 #SI to cgs
+  
     z_axis = (np.linspace(zmin, zmax, nz, endpoint=False) +
-             (np.abs(zmin) + np.abs(zmax))/(2*float(nz)))
+             (np.abs(zmin) + np.abs(zmax))/(2*float(nz))) * 100 #SI to cgs
     
+    
+    # check species
     
     s = []
     for keys in f.attrs.keys():
@@ -53,9 +57,20 @@ def plasmaGrid(phi, rho, orbphase, xArray, key_species, scenarioDict, architectu
         if keys.startswith('s') and 'name' in keys:
             
             s.append(f.attrs[keys].decode('UTF-8'))
+    
+    # convert from <Element>+ to <Element>II notation
+    # (can so far only take I or II elements)
+    if key_species.endswith('II'):
+        
+        key_species_conv = key_species[:-2] + '+'
+        
+    else:
+        
+        key_species_conv = key_species[:-1]
+            
     try:
         
-        key_species_name = "rho" + "%02d"%(s.index(key_species) + 1)
+        key_species_name = "rho" + "%02d"%(s.index(key_species_conv) + 1)
         
     except ValueError:
         
@@ -64,9 +79,13 @@ def plasmaGrid(phi, rho, orbphase, xArray, key_species, scenarioDict, architectu
         
         sys.exit()
 
+    # retrieve density from file
+
     rho = f[key_species_name][:]          # total charge density [C/m^3]
+    
     den = rho/1.6e-19                       # total number density [#/m^3]
     
-    pol_func = RegularGridInterpolator((x_axis, y_axis, z_axis), den, fill_value=0)
+    pol_func = RegularGridInterpolator((x_axis, y_axis, z_axis), den, bounds_error = False, fill_value=0)
+    
     
     return pol_func
