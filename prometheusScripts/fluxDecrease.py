@@ -252,7 +252,7 @@ def evaluateChord(point, args): # Function to be multiprocessed
 
     return np.float32(singleChord), None
 
-def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime):
+def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime, verbose):
 
     xArray, delta_x = constructAxis(gridsDict, architectureDict, 'x')
 
@@ -268,15 +268,18 @@ def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDi
 
     Fstar_function = getPHOENIX_output(wavelengthArray, fundamentalsDict, architectureDict)
 
-    print('\nPHOENIX spectrum downloaded (if required):', datetime.now() - startTime)
+    if verbose:
+        print('\nPHOENIX spectrum downloaded (if required):', datetime.now() - startTime)
 
     FstarIntegrated, FstarUpper = getFstarIntegrated(wavelengthArray, fundamentalsDict, architectureDict, gridsDict, Fstar_function) # Stellar flux as a function of wavelength, integrated over the stellar disk
 
-    print('Integrated stellar flux calculated:', datetime.now() - startTime)
+    if verbose:
+        print('Integrated stellar flux calculated:', datetime.now() - startTime)
 
     sigmaLookupDict = gasprop.createLookupAbsorption(xArray, wavelengthArray, GRID, fundamentalsDict, architectureDict, scenarioDict, speciesDict)
 
-    print('Lookup absorption cross section calculated (if required):', datetime.now() - startTime)
+    if verbose:
+        print('Lookup absorption cross section calculated (if required):', datetime.now() - startTime)
 
     args = (delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function)
 

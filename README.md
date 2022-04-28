@@ -29,7 +29,7 @@ three spatial dimensions).
 This file is located at '/Users/agebek/Proemtheus/setupFiles/testSimulation.txt'. To run a Prometheus
 calculation, navigate to the git subfolder and type ```python main.py testSimulation``` in
 the terminal. This will create the file '/Users/agebek/Prometheus/output/testSimulation_lightcurve.txt'
-(and, depending on your setup, additional output files) which contains the resulting lightcurve of the calculation.
+(and, depending on your setup, additional output files) which contains the resulting lightcurve of the calculation. If you want to omit the written output to the terminal with runtime information enter ```python main.py testSimulation silent``` in the terminal.
 4. If you want to make use of the built-in plotting scripts, navigate to the plottingScripts subfolder
 in the git subfolder (here: '/Users/agebek/Prometheus/git/plottingScripts'). Run the plotting script
 of your choice, e.g. 'plotSpectra.py' to plot a transmission spectrum, by typing ```python plotSpectra.py testSimulation```

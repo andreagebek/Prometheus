@@ -37,6 +37,11 @@ if __name__ == '__main__':
 
     paramsFilename = sys.argv[1]
 
+    verbose = True
+    if len(sys.argv) == 3:
+        if sys.argv[2] == 'silent':
+            verbose = False
+
     with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
         param = json.load(file)
 
@@ -47,11 +52,12 @@ if __name__ == '__main__':
     gridsDict = param['Grids']
     outputDict = param['Output']
 
-    GRID, args, FstarIntegrated, FstarUpper = flux.prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime)
+    GRID, args, FstarIntegrated, FstarUpper = flux.prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime, verbose)
 
     N_cores = mp.cpu_count()
 
-    print('Starting main calculation on', N_cores, 'cores:', datetime.now() - startTime)
+    if verbose:
+        print('Starting main calculation on', N_cores, 'cores:', datetime.now() - startTime)
 
     RESULTS = []
 
@@ -62,11 +68,13 @@ if __name__ == '__main__':
     pool.close()
     pool.join()
 
-    print('Main calculation for the optical depths of all chords finished:', datetime.now() - startTime)
+    if verbose:
+        print('Main calculation for the optical depths of all chords finished:', datetime.now() - startTime)
 
     R, index_max = flux.sumOverChords(RESULTS_R, gridsDict, FstarIntegrated, FstarUpper)
 
-    print('Sum over chords finished:', datetime.now() - startTime)
+    if verbose:
+        print('Sum over chords finished:', datetime.now() - startTime)
 
     """
     Store the output in .txt files
@@ -93,20 +101,21 @@ if __name__ == '__main__':
     
     elapsedTime = datetime.now() - startTime
 
-    print("\nPROMETHEUS finished, yay! Elapsed time is:", elapsedTime)
+    if verbose:
+        print("\nPROMETHEUS finished, yay! Elapsed time is:", elapsedTime)
 
-    print("The maximal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.min(R)), 5)))
+        print("The maximal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.min(R)), 5)))
 
-    print("The minimal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.max(R)), 5)))
+        print("The minimal flux decrease due to atmospheric/exospheric absorption in percent is:", np.abs(np.round(100 * (1 - np.max(R)), 5)))
 
 
-    print(r"""
-    *******  *******           ,/MMM8&&&.         ****     **** ******** ********** **      ** ******** **     **  ********
-    /**////**/**////**     _...MMMMM88&&&&..._    /**/**   **/**/**///// /////**/// /**     /**/**///// /**    /** **////// 
-    /**   /**/**   /**   .:'''MMMMM88&&&&&&''':.  /**//** ** /**/**          /**    /**     /**/**      /**    /**/**       
-    /******* /*******   :     MMMMM88&&&&&&     : /** //***  /**/*******     /**    /**********/******* /**    /**/*********
-    /**////  /**///**    ':...MMMMM88&&&&&&....:  /**  //*   /**/**////      /**    /**//////**/**////  /**    /**////////**
-    /**      /**  //**      `''MMMMM88&&&&'''`    /**   /    /**/**          /**    /**     /**/**      /**    /**       /**
-    /**      /**   //**         'MMM8&&&'         /**        /**/********    /**    /**     /**/********//*******  ******** 
-    //       //     //                            //         // ////////     //     //      // ////////  ///////  ////////  
-    """)
+        print(r"""
+        *******  *******           ,/MMM8&&&.         ****     **** ******** ********** **      ** ******** **     **  ********
+        /**////**/**////**     _...MMMMM88&&&&..._    /**/**   **/**/**///// /////**/// /**     /**/**///// /**    /** **////// 
+        /**   /**/**   /**   .:'''MMMMM88&&&&&&''':.  /**//** ** /**/**          /**    /**     /**/**      /**    /**/**       
+        /******* /*******   :     MMMMM88&&&&&&     : /** //***  /**/*******     /**    /**********/******* /**    /**/*********
+        /**////  /**///**    ':...MMMMM88&&&&&&....:  /**  //*   /**/**////      /**    /**//////**/**////  /**    /**////////**
+        /**      /**  //**      `''MMMMM88&&&&'''`    /**   /    /**/**          /**    /**     /**/**      /**    /**       /**
+        /**      /**   //**         'MMM8&&&'         /**        /**/********    /**    /**     /**/********//*******  ******** 
+        //       //     //                            //         // ////////     //     //      // ////////  ///////  ////////  
+        """)
