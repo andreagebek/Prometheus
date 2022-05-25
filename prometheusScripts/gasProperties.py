@@ -226,7 +226,7 @@ def readLineList(key_species, wavelength):
     line_gamma = line_A[SEL_SPECIES * SEL_COMPLETE].astype(np.float) / (4. * np.pi) # HWHM of Lorentzian, assumed to be A / (4 * pi) (see Draine 2013 p57)
     line_f = line_f[SEL_SPECIES * SEL_COMPLETE].astype(np.float)
 
-    SEL_WAVELENGTH = (line_wavelength > 0.95 * min(wavelength)) * (line_wavelength < 1.05 * max(wavelength))
+    SEL_WAVELENGTH = (line_wavelength > min(wavelength)) * (line_wavelength < max(wavelength))
 
     return line_wavelength[SEL_WAVELENGTH], line_gamma[SEL_WAVELENGTH], line_f[SEL_WAVELENGTH]
 
@@ -259,51 +259,31 @@ def calculateDopplerShift(v_los):
 
 def createLookupAbsorption(xArray, wavelengthArray, GRID, fundamentalsDict, architectureDict, scenarioDict, speciesDict):
 
-    if fundamentalsDict['ExactSigmaAbs']:
+    sigmaLookupDict = {}
 
-        return None
+    for key_scenario in scenarioDict.keys():
 
-    else:
+        sigmaLookup = np.zeros_like(wavelengthArray)
 
-        sigmaLookupDict = {}
+        for key_species in speciesDict[key_scenario].keys():
 
-        for key_scenario in scenarioDict.keys():
+            if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
 
-            v_los = []
+                line_wavelength, line_gamma, line_f = readLineList(key_species, wavelengthArray)
 
-            for point in GRID:
-
-                phi = point[0]
-                rho = point[1]
-                orbphase = point[2]
-            
-                v_los.append(getLOSVelocity(phi, rho, orbphase, xArray, fundamentalsDict, key_scenario, scenarioDict[key_scenario], architectureDict))
-
-            v_los_max = np.max(np.abs(v_los))
-
-            w_min = np.min(wavelengthArray) * calculateDopplerShift(v_los_max)
-            w_max = np.max(wavelengthArray) * calculateDopplerShift(-v_los_max)
-            wavelengthHighRes = np.arange(w_min, w_max, fundamentalsDict['LookupResolution'])
-
-            sigmaHighRes = np.zeros_like(wavelengthHighRes)
-
-            for key_species in speciesDict[key_scenario].keys():
-
-                if 'sigma_v' in speciesDict[key_scenario][key_species].keys():
-
-                    line_wavelength, line_gamma, line_f = readLineList(key_species, wavelengthArray)
-
-                    sigmaHighRes += calculateLineAbsorption(wavelengthHighRes, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
+                sigmaLookup += calculateLineAbsorption(wavelengthArray, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])
 
 
-            if 'RayleighScatt' in scenarioDict[key_scenario].keys():
+        if 'RayleighScatt' in scenarioDict[key_scenario].keys():
 
-                if scenarioDict[key_scenario]['RayleighScatt']:
+            if scenarioDict[key_scenario]['RayleighScatt']:
 
-                    sigmaHighRes += 8.49e-45 / wavelengthHighRes**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
-            
-            sigmaLookupFunction = interp1d(wavelengthHighRes, sigmaHighRes, kind = 'cubic')
-            sigmaLookupDict[key_scenario] = (sigmaLookupFunction, wavelengthHighRes)
+                sigmaLookup += 8.49e-45 / wavelengthArray**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
+
+
+        sigmaLookupFunction = interp1d(wavelengthArray, np.log10(sigmaLookup), kind = 'cubic', bounds_error = False, fill_value = (np.log10(sigmaLookup[0]), np.log10(sigmaLookup[-1])))
+        # Extend absorption cross section outside the wavelength domain assuming a constant value. Note: sigma is in the logarithm here!!
+        sigmaLookupDict[key_scenario] = sigmaLookupFunction
 
     return sigmaLookupDict
  
@@ -317,33 +297,8 @@ def getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_s
     wavelengthShiftFactor = calculateDopplerShift(-v_los)
     wavelengthShifted = np.tensordot(wavelengthArray, wavelengthShiftFactor, axes = 0)
 
-    if fundamentalsDict['ExactSigmaAbs']:
+    sigmaLookupFunction = sigmaLookupDict[key_scenario]
 
-        sigma_abs = 0
-
-        for key_species in speciesDict[key_scenario].keys():
-
-            line_wavelength, line_gamma, line_f = readLineList(key_species, wavelengthArray)
-
-            sigma_abs += calculateLineAbsorption(wavelengthShifted, line_wavelength, line_gamma, line_f, speciesDict[key_scenario][key_species])            
-            
-        if 'RayleighScatt' in specificScenarioDict.keys():
-
-            if specificScenarioDict['RayleighScatt']:
-
-                sigma_abs += 8.49e-45 / wavelengthShifted**4 # FROM WHERE IS THIS? DEPENDENCY ON H2 mixing ratio?
-
-    else:
-
-        sigmaLookupFunction, wavelengthHighRes = sigmaLookupDict[key_scenario]
-
-        sigmaLookupUnclipped = sigmaLookupFunction(np.clip(wavelengthShifted, np.min(wavelengthHighRes), np.max(wavelengthHighRes))) # Evaluate the lookup absorption cross 
-        #section at Doppler-shifted wavelengths. Clip because of rounding & fitting errors
-
-        if np.any(sigmaLookupUnclipped < 0.):
-            print('\nWARNING: The absorption cross section is smaller than zero somewhere. This is probably due to an insufficient lookup resolution. \
-The absorption cross section will be clipped to positive values.\n')
-
-        sigma_abs = np.clip(sigmaLookupUnclipped, 0., a_max = None)
+    sigma_abs = 10**sigmaLookupFunction(wavelengthShifted) # Evaluate the lookup absorption cross section at Doppler-shifted wavelengths. Correct for the logarithmic fit.
     
     return sigma_abs

@@ -53,11 +53,56 @@ def constructAxis(gridsDict, architectureDict, axisName): # For spatial axes, re
 
         return orbphase_axis  
 
-    elif axisName == 'wavelength':
+def constructWavelengthGrid(gridsDict, scenarioDict, speciesDict):
 
-        wavelength = np.arange(gridsDict['lower_w'], gridsDict['upper_w'], gridsDict['resolution'])
+    lower_w = gridsDict['lower_w']
+    upper_w = gridsDict['upper_w']
+    widthHighRes = gridsDict['widthHighRes']
+    resolutionLow = gridsDict['resolutionLow']
+    resolutionHigh = gridsDict['resolutionHigh']
 
-        return wavelength
+    linesList = []
+
+    for key_scenario in scenarioDict.keys():
+        for key_species in speciesDict[key_scenario].keys():
+
+            lines_w = gasprop.readLineList(key_species, np.array([lower_w, upper_w]))[0] # Read in center wavelengths of all absorption lines
+            
+            linesList.extend(lines_w)
+
+    peaks = np.sort(np.unique(linesList))
+    diff = np.concatenate(([np.inf], np.diff(peaks), [np.inf])) # Difference between each absorption line center. Add infinity at beginning and end such that
+    # when calculating the high-resolution bands we keep the lines with the lowest/highest wavlengths.
+
+    HighResBorders = ([], [])
+
+    for idx, peak in enumerate(peaks):
+
+        if diff[idx] > widthHighRes:
+
+            HighResBorders[0].append(peak - widthHighRes / 2.)
+
+        if diff[idx + 1] > widthHighRes:
+
+            HighResBorders[1].append(peak + widthHighRes / 2.)
+
+    grid = []
+
+    for idx in range(len(HighResBorders[0])):
+
+        grid.append(np.arange(HighResBorders[0][idx], HighResBorders[1][idx], resolutionHigh))
+
+        if idx == 0 and lower_w < HighResBorders[0][0]:
+            grid.append(np.arange(lower_w, HighResBorders[0][0], resolutionLow))
+        elif idx == len(HighResBorders[0]) - 1 and upper_w > HighResBorders[1][-1]:
+            grid.append(np.arange(HighResBorders[1][-1], upper_w, resolutionLow))
+        else:
+            grid.append(np.arange(HighResBorders[1][idx - 1], HighResBorders[0][idx], resolutionLow))
+
+    wavelength = np.sort(np.concatenate(grid))
+
+    return wavelength
+
 
 def calculateCLV(rho, R_star, u1, u2):
 
@@ -256,7 +301,7 @@ def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDi
 
     xArray, delta_x = constructAxis(gridsDict, architectureDict, 'x')
 
-    wavelengthArray = constructAxis(gridsDict, architectureDict, 'wavelength')
+    wavelengthArray = constructWavelengthGrid(gridsDict, scenarioDict, speciesDict)
 
     phiArray, delta_phi = constructAxis(gridsDict, architectureDict, 'phi')
     rhoArray, delta_rho = constructAxis(gridsDict, architectureDict, 'rho')
@@ -279,7 +324,7 @@ def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDi
     sigmaLookupDict = gasprop.createLookupAbsorption(xArray, wavelengthArray, GRID, fundamentalsDict, architectureDict, scenarioDict, speciesDict)
 
     if verbose:
-        print('Lookup absorption cross section calculated (if required):', datetime.now() - startTime)
+        print('Lookup absorption cross section calculated:', datetime.now() - startTime)
 
     args = (delta_x, delta_phi, delta_rho, xArray, wavelengthArray, architectureDict, fundamentalsDict, scenarioDict, speciesDict, gridsDict, outputDict, sigmaLookupDict, Fstar_function)
 

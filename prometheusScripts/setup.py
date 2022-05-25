@@ -116,11 +116,6 @@ fundamentalsDict['CLV_variations'] = read_str('Do you want to take center-to-lim
 fundamentalsDict['RM_effect'] = read_str('Do you want to take the Rossiter-McLaughlin-Effect into account (note that this means that you \
 have to provide additional information about the host star to specifiy its spectrum)?', ['yes', 'no'])
 fundamentalsDict['DopplerOrbitalMotion'] = read_str('Do you want to consider the Doppler shifts due to planetary/exomoon orbital motion?', ['yes', 'no'])
-fundamentalsDict['ExactSigmaAbs'] = read_str('Do you want to calculate the absorption cross section exactly (NOT RECOMMENDED, makes the code very slow)?', ['yes', 'no'])
-
-if not fundamentalsDict['ExactSigmaAbs']:
-    fundamentalsDict['LookupResolution'] = read_value('Enter the resolution for the lookup table in Angstrom. Note that this effectively corresponds to a velocity resolution, \
-to resolve a velocity of 1 km/s at 6000 Angstrom a lookup table resolution of 0.02 Angstrom is needed.', 1e-5, 100, 1e-8)
 
 """
 Scenarios for the spatial distribution of the medium
@@ -385,7 +380,9 @@ gridsDict = {}
 
 gridsDict['lower_w'] = read_value('Enter the lower wavelength border in Angstrom:', 500, 55000, 1e-8, roundBorders = False)
 gridsDict['upper_w'] = read_value('Enter the upper wavelength border in Angstrom:', gridsDict['lower_w'] * 1e8, 55000, 1e-8, roundBorders = False)
-gridsDict['resolution'] = read_value('Enter the resolution of the wavelength grid in Angstrom:', 1e-6, (gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 2., 1e-8, roundBorders = False)
+gridsDict['resolutionLow'] = read_value('Enter the resolution of the coarse wavelength grid in Angstrom:', 1e-6, (gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 2., 1e-8, roundBorders = False)
+gridsDict['widthHighRes'] = read_value('Enter the bandwidth (centered on each absorption line) over which to consider a higher resolution in Angstrom:', 1e-6, (gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 2., 1e-8, roundBorders = False)
+gridsDict['resolutionHigh'] = read_value('Enter the resolution of the fine wavelength grid in Angstrom:', 1e-6, gridsDict['widthHighRes'] * 1e8, 1e-8, roundBorders = False)
 
 gridsDict['x_midpoint'] = read_value('Enter the midpoint of the grid in x-direction in planetary orbital radii (default: 1):', architectureDict['R_star'] / architectureDict['a_p'], 10.,
 architectureDict['a_p'], roundBorders = False)
