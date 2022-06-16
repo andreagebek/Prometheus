@@ -94,8 +94,11 @@ def constructWavelengthGrid(gridsDict, scenarioDict, speciesDict):
 
         if idx == 0 and lower_w < HighResBorders[0][0]:
             grid.append(np.arange(lower_w, HighResBorders[0][0], resolutionLow))
+
         elif idx == len(HighResBorders[0]) - 1 and upper_w > HighResBorders[1][-1]:
             grid.append(np.arange(HighResBorders[1][-1], upper_w, resolutionLow))
+            grid.append(np.arange(HighResBorders[1][idx - 1], HighResBorders[0][idx], resolutionLow))
+            
         else:
             grid.append(np.arange(HighResBorders[1][idx - 1], HighResBorders[0][idx], resolutionLow))
 
