@@ -31,6 +31,16 @@ matplotlib.rcParams['image.origin'] = 'lower'
 matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 
 """
+Plotting settings - change ad lib
+bandwidth: Bandwidth in Angstrom used to calculate the average lightcurve within that band
+centerWavelengths: List of wavelengths (in Angstrom) which denote the centers of the bands 
+"""
+
+bandwidth = 0.4 # In Angstrom
+centerWavelengths = [5880., 5890., 5891., 5893.] # In Angstrom
+
+
+"""
 Read in settings file and stored light curve
 """
 
@@ -39,25 +49,32 @@ paramsFilename = sys.argv[1]
 with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
     param = json.load(file)
 
-architectureDict = param['Architecture']
-gridsDict = param['Grids']
-
-wavelength = flux.constructAxis(gridsDict, architectureDict, 'wavelength')
-orbphase = flux.constructAxis(gridsDict, architectureDict, 'orbphase') / (2. * np.pi) # Convert from Radiant to unity
+N_orbphase = int(param['Grids']['orbphase_steps']) # Get the number of orbital phase steps from the setup file
 
 
 LightcurveFile = np.loadtxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt')
 
-R = LightcurveFile[:, 2].reshape(len(wavelength), len(orbphase))
+wavelength = LightcurveFile[::N_orbphase, 0] # In Angstrom
+N_wavelength = len(wavelength)
+orbphase = LightcurveFile[0:N_orbphase, 1] / (2. * np.pi) # Convert to unity
+
+R = LightcurveFile[:, 2].reshape(N_wavelength, N_orbphase) # Transit depth R(orbphase, wavelength)
+
 
 lightcurveList = []
 
-for idx in range(len(wavelength)):
-    lightcurveList.append(R[idx, :])
+for w in centerWavelengths:
+
+    SEL = (wavelength > w - bandwidth / 2.) * (wavelength < w + bandwidth / 2.)
+
+    if len(SEL[SEL]) == 0:
+        print(w)
+
+    lightcurveList.append(np.mean(R[SEL, :], axis = 0))
 
 
 """
-Plot the light curve and store the figure
+Plot the light curves and store the figure
 """
 
 fig = plt.figure(figsize=(10, 8))
@@ -67,7 +84,7 @@ cmap = matplotlib.cm.get_cmap('Accent')
 
 for idx, lightcurve in enumerate(lightcurveList):
 
-    ax.plot(orbphase, lightcurve, color = cmap(float(idx) / (len(wavelength) - 1.)), linewidth = 2, label = str(np.round(wavelength[idx] * 1e8, 2)) + r'$\,\AA$')
+    ax.plot(orbphase, lightcurve, color = cmap(float(idx) / (len(centerWavelengths) - 1.)), linewidth = 2, label = str(np.round(centerWavelengths[idx], 2)) + r'$\,\AA$')
 
 lg = ax.legend(loc = 'center right')
 lg.get_frame().set_alpha(0)
