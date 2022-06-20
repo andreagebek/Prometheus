@@ -37,7 +37,7 @@ centerWavelengths: List of wavelengths (in Angstrom) which denote the centers of
 """
 
 bandwidth = 0.4 # In Angstrom
-centerWavelengths = [5880., 5890., 5891., 5893.] # In Angstrom
+centerWavelengths = [5891.2, 5891.6, 5892., 5892.4] # In Angstrom
 
 
 """
@@ -68,7 +68,8 @@ for w in centerWavelengths:
     SEL = (wavelength > w - bandwidth / 2.) * (wavelength < w + bandwidth / 2.)
 
     if len(SEL[SEL]) == 0:
-        print(w)
+        print('At a central wavelength of', w, 'Angstrom we do not have any simulation output. The plotting script exits now.')
+        sys.exit()
 
     lightcurveList.append(np.mean(R[SEL, :], axis = 0))
 
