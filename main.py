@@ -80,7 +80,7 @@ if __name__ == '__main__':
     Store the output in .txt files
     """
 
-    orbphase_axis = flux.constructAxis(gridsDict, architectureDict, 'orbphase')
+    orbphase_axis = flux.constructAxis(gridsDict, 'orbphase')
     wavelength_axis = flux.constructWavelengthGrid(gridsDict, scenarioDict, speciesDict) * 1e8 # Conversion from cm to Angstrom
 
     wavelength, orbphase = np.meshgrid(wavelength_axis, orbphase_axis, indexing = 'ij')

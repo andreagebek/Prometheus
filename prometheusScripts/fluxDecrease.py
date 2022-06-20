@@ -17,7 +17,7 @@ import prometheusScripts.geometryHandler as geom
 import prometheusScripts.gasProperties as gasprop
 import prometheusScripts.stellarSpectrum as stellar
 
-def constructAxis(gridsDict, architectureDict, axisName): # For spatial axes, return both the grid and the spacing (difference between grid points)
+def constructAxis(gridsDict, axisName): # For spatial axes, return both the grid and the spacing (difference between grid points)
 
     if axisName == 'x':
 
@@ -181,8 +181,8 @@ def getFstarIntegrated(wavelengthArray, fundamentalsDict, architectureDict, grid
 
     else: # RM_effect = True
 
-        phiArray, delta_phi = constructAxis(gridsDict, architectureDict, 'phi')
-        rhoArray, delta_rho = constructAxis(gridsDict, architectureDict, 'rho')
+        phiArray, delta_phi = constructAxis(gridsDict, 'phi')
+        rhoArray, delta_rho = constructAxis(gridsDict, 'rho')
 
         phiGrid, rhoGrid = np.meshgrid(phiArray, rhoArray, indexing = 'ij')
 
@@ -302,13 +302,13 @@ def evaluateChord(point, args): # Function to be multiprocessed
 
 def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime, verbose):
 
-    xArray, delta_x = constructAxis(gridsDict, architectureDict, 'x')
+    xArray, delta_x = constructAxis(gridsDict, 'x')
 
     wavelengthArray = constructWavelengthGrid(gridsDict, scenarioDict, speciesDict)
 
-    phiArray, delta_phi = constructAxis(gridsDict, architectureDict, 'phi')
-    rhoArray, delta_rho = constructAxis(gridsDict, architectureDict, 'rho')
-    orbphaseArray = constructAxis(gridsDict, architectureDict, 'orbphase')
+    phiArray, delta_phi = constructAxis(gridsDict, 'phi')
+    rhoArray, delta_rho = constructAxis(gridsDict, 'rho')
+    orbphaseArray = constructAxis(gridsDict, 'orbphase')
 
     phiGrid, rhoGrid, orbphaseGrid = np.meshgrid(phiArray, rhoArray, orbphaseArray, indexing = 'ij')
 
@@ -357,9 +357,9 @@ def getTau(RESULTS_TAU, architectureDict, gridsDict, index_max):
     N_orbphase = int(gridsDict['orbphase_steps'])
     N_lambda = len(RESULTS_TAU[0])
 
-    rho_axis = constructAxis(gridsDict, architectureDict, 'rho')[0]
+    rho_axis = constructAxis(gridsDict, 'rho')[0]
 
-    phi_axis = constructAxis(gridsDict, architectureDict, 'phi')[0]
+    phi_axis = constructAxis(gridsDict, 'phi')[0]
     
     phi, rho = np.meshgrid(phi_axis, rho_axis, indexing = 'ij')
     phi = phi.flatten()
