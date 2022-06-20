@@ -31,11 +31,15 @@ matplotlib.rcParams['image.origin'] = 'lower'
 matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 
 """
-Read in settings file and stored optical depth values
+Plotting settings - change ad lib
 """
 
 plotPlanet = False
 plotStar = True
+
+"""
+Read in settings file and stored optical depth values
+"""
 
 paramsFilename = sys.argv[1]
 
@@ -58,7 +62,7 @@ phi = tauFile[:, 0].reshape(phi_steps, rho_steps)
 rho = tauFile[:, 1].reshape(phi_steps, rho_steps)
 tau = tauFile[:, 2].reshape(phi_steps, rho_steps)
 
-x, y, z = geom.getCartesianFromCylinder(0, phi, rho) # x is not used here
+y, z = geom.getCartesianFromCylinder(phi, rho)
 
 
 fig = plt.figure(figsize=(10, 8))

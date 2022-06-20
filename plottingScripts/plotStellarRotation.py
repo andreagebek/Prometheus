@@ -12,6 +12,7 @@ import matplotlib
 import json
 import os
 import sys
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 PARENTPATH = os.path.dirname(GITPATH)
@@ -32,12 +33,16 @@ matplotlib.rcParams['image.origin'] = 'lower'
 matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 
 """
+Plotting settings - change ad lib
+"""
+
+plotStar = True
+
+"""
 Read in settings file and stored optical depth values
 """
 
 paramsFilename = sys.argv[1]
-
-plotStar = True
 
 with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
     param = json.load(file)
@@ -48,25 +53,36 @@ gridsDict = param['Grids']
 R_0 = architectureDict['R_0']
 R_star = architectureDict['R_star']
 
-phi_axis = flux.constructAxis(gridsDict, architectureDict, 'phi')
-rho_axis = flux.constructAxis(gridsDict, architectureDict, 'rho')
+phi_axis = flux.constructAxis(gridsDict, 'phi')[0]
+rho_axis = flux.constructAxis(gridsDict, 'rho')[0]
 
-phi, rho = np.meshgrid(phi_axis, rho_axis, indexing = 'ij')
+phiGrid, rhoGrid = np.meshgrid(phi_axis, rho_axis, indexing = 'ij')
 
-v_los = geom.calculateStellarLOSvelocity(architectureDict, phi_axis, rho_axis) * 1e-5 # The line-of-sight velocity is the one along the x-axis (in km/s)
+v_los = []
 
-x, y, z = geom.getCartesianFromCylinder(0, phi, rho) # x is not needed here
+for phi in phi_axis:
+    for rho in rho_axis:
+
+        v_los.append(geom.calculateStellarLOSvelocity(architectureDict, phi, rho) * 1e-5) # The line-of-sight velocity is the one along the x-axis (in km/s)
+
+v_los = np.array(v_los).reshape(len(phi_axis), len(rho_axis))
+
+y, z = geom.getCartesianFromCylinder(phiGrid, rhoGrid)
+
 
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111)
 
-plt.scatter(y / R_0, z / R_0, c = v_los, s = 2, vmin = np.min(v_los), vmax = np.max(v_los), cmap = 'Spectral_r')
+im = plt.scatter(y / R_0, z / R_0, c = v_los, s = 2, vmin = np.min(v_los), vmax = np.max(v_los), cmap = 'Spectral_r')
 
 if plotStar:
     starCircle = plt.Circle((0, 0), R_star / R_0, edgecolor = 'black', fill = False, linewidth = 2)
     ax.add_patch(starCircle)
 
-cbar = plt.colorbar()
+divider = make_axes_locatable(ax)
+cax = divider.append_axes("right", size="5%", pad=0.25)
+
+cbar = plt.colorbar(im, cax=cax)
 cbar.set_label(r'$v_{\rm{los}}\,[\rm{km/s}]$')
 cbar.ax.minorticks_on()
 

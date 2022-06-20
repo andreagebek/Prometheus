@@ -34,10 +34,14 @@ matplotlib.rcParams['image.origin'] = 'lower'
 matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 
 """
-Read in settings file and calculate stellar spectrum
+Plotting settings - change ad lib
 """
 
-plotDopplerShift = True
+plotRMDopplerShift = False
+
+"""
+Read in settings file and calculate stellar spectrum
+"""
 
 paramsFilename = sys.argv[1]
 
@@ -46,12 +50,14 @@ with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
 
 architectureDict = param['Architecture']
 gridsDict = param['Grids']
+scenarioDict = param['Scenarios']
+speciesDict = param['Species']
 
 R_star = architectureDict['R_star']
 T_starrot = architectureDict['period_starrot']
 
 
-wavelength = flux.constructAxis(gridsDict, architectureDict, 'wavelength')
+wavelength = flux.constructWavelengthGrid(gridsDict, scenarioDict, speciesDict)
 
 T_eff = architectureDict['T_eff']
 log_g = architectureDict['log_g']
@@ -84,13 +90,13 @@ ax = fig.add_subplot(111)
 ax.plot(w_star * 1e8, F_0, color = 'blue', linewidth = 2)
 
 
-if plotDopplerShift:
+if plotRMDopplerShift:
     delta_w_max = (gasprop.calculateDopplerShift(v_max) - 1.) * np.mean(wavelength) * 1e8
     plt.arrow(np.mean(wavelength) * 1e8, np.min(F_0), delta_w_max, 0, linewidth = 4, facecolor = 'black')
     ax.annotate(r'$\Delta \lambda$', xy = (np.mean(wavelength) * 1e8, 1.5 * np.min(F_0)), ha = 'center')  
 
 ax.set_xlabel(r'$\lambda\,[\AA]$')
-ax.set_ylabel(r'$F_{\nu}\,[\rm{erg\,s^{-1}\,cm^{-2}\,cm^{-1}}]$')
+ax.set_ylabel(r'$F_{\lambda}\,[\rm{erg\,s^{-1}\,cm^{-2}\,cm^{-1}}]$')
 
 ax.minorticks_on()
 ax.tick_params(which = 'both', direction = 'in', right = True, top = True)
