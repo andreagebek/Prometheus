@@ -16,7 +16,6 @@ SCRIPTPATH = os.path.realpath(__file__)
 GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
 PARENTPATH = os.path.dirname(GITPATH)
 sys.path.append(GITPATH)
-import prometheusScripts.fluxDecrease as flux
 
 matplotlib.rcParams['axes.linewidth'] = 2.5
 matplotlib.rcParams['xtick.major.size'] = 10
@@ -30,8 +29,9 @@ matplotlib.rcParams['ytick.minor.width'] = 1.5
 matplotlib.rcParams['image.origin'] = 'lower'
 matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 
+
 """
-Read in settings file and stored light curve
+Read in settings file and stored lightcurve.
 """
 
 paramsFilename = sys.argv[1]
@@ -42,15 +42,21 @@ with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
 architectureDict = param['Architecture']
 gridsDict = param['Grids']
 
-wavelength_axis = flux.constructAxis(gridsDict, architectureDict, 'wavelength')
-orbphase_axis = flux.constructAxis(gridsDict, architectureDict, 'orbphase')
 
-wavelength, orbphase = np.meshgrid(wavelength_axis, orbphase_axis, indexing = 'ij')
+
+R_star = architectureDict['R_star']
+R_0 = architectureDict['R_0']
+a_p = architectureDict['a_p']
+
 
 LightcurveFile = np.loadtxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt')
 
+N_orbphase = int(param['Grids']['orbphase_steps']) # Get the number of orbital phase steps from the setup file
+N_wavelength = int(np.size(LightcurveFile, axis = 0) / float(N_orbphase))
 
-R = LightcurveFile[:, 2].reshape(len(wavelength_axis), len(orbphase_axis))
+wavelength = LightcurveFile[::N_orbphase, 0] # In Angstrom
+orbphase = LightcurveFile[0:N_orbphase, 1] / (2. * np.pi) # Convert to unity
+R = LightcurveFile[:, 2].reshape(N_wavelength, N_orbphase) # Transit depth R(orbphase, wavelength)
 
 """
 Plot the light curve and store the figure
@@ -60,7 +66,7 @@ fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111)
 
 cmap = matplotlib.cm.get_cmap('Accent')
-im = ax.pcolormesh(wavelength * 1e8, orbphase / (2. * np.pi), R, cmap = 'Spectral')
+im = ax.pcolormesh(wavelength, orbphase, R.T, cmap = 'Spectral', shading = 'nearest')
 
 cbar = fig.colorbar(im, ax = ax)
 cbar.set_label(r'$\Re$')
