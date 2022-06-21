@@ -35,13 +35,15 @@ matplotlib.rcParams['image.origin'] = 'lower'
 matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 
 """
-Read in settings file and calculate the absorption cross section
+Plotting settings - change ad lib
 """
 
-plotRayleighScatt = True
+T = 1000. # Temperature in K to get (constant) velocity dispersion
+plotRayleighScatt = False
 
-T = 1000 # Temperature in K to get velocity dispersion
-P = 1e0 # Pressure in cgs units (for molecular absorption), 1 bar is 1e6 barye (cgs-unit) 
+"""
+Read in settings file and calculate the absorption cross section
+"""
 
 paramsFilename = sys.argv[1]
 
@@ -50,46 +52,27 @@ with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
 
 architectureDict = param['Architecture']
 gridsDict = param['Grids']
+scenarioDict = param['Scenarios']
 speciesDict = param['Species']
 
-wavelength = flux.constructAxis(gridsDict, architectureDict, 'wavelength')
+wavelength = flux.constructWavelengthGrid(gridsDict, scenarioDict, speciesDict)
 
 sigmaAbsSpecies = []
-evaporativeSpeciesList = [] # Atoms/Ions
-molecularSpeciesList = [] # Molecules
+speciesList = [] # Atoms/Ions
 
-for key_scenario in speciesDict.keys():
-
+for key_scenario in scenarioDict.keys():
     for key_species in speciesDict[key_scenario].keys():
+        if not key_species in speciesList:
+            speciesList.append(key_species)
 
-        if not key_species in evaporativeSpeciesList and 'sigma_v' in speciesDict[key_scenario][key_species].keys():
 
-            evaporativeSpeciesList.append(key_species)
-
-        if not key_species in molecularSpeciesList and not 'sigma_v' in speciesDict[key_scenario][key_species].keys():
-
-            molecularSpeciesList.append(key_species)
-
-labelList = evaporativeSpeciesList + molecularSpeciesList
-
-for key_species in evaporativeSpeciesList:
+for key_species in speciesList:
 
     sigma_v = np.sqrt(const.k_B * T / const.speciesInfoDict[key_species][2])
 
     line_wavelength, line_gamma, line_f = gasprop.readLineList(key_species, wavelength)
     sigmaAbsSpecies.append(gasprop.calculateLineAbsorption(wavelength, line_wavelength, line_gamma, line_f, {'chi': 1., 'sigma_v': sigma_v}))
 
-    labelList.append(key_species)
-
-for key_species in molecularSpeciesList:
-
-    P_mol, T_mol, wavelength_mol, sigma_mol = gasprop.readMolecularAbsorption(key_species)
-
-    sigma_mol_function = RegularGridInterpolator((P_mol, T_mol, wavelength_mol[::-1]), sigma_mol[:, :, ::-1], bounds_error = False, fill_value = 0.)
-
-    sigma_mol = sigma_mol_function((P, T, wavelength))
-
-    sigmaAbsSpecies.append(sigma_mol)
 
 """
 Plot the absorption cross section and store the figure
@@ -102,7 +85,7 @@ cmap = matplotlib.cm.get_cmap('viridis')
 
 for idx, sigmaAbs in enumerate(sigmaAbsSpecies):
 
-    ax.plot(wavelength * 1e8, sigmaAbs, color = cmap(float(idx) / float(len(labelList))), linewidth = 2, label = labelList[idx])
+    ax.plot(wavelength * 1e8, sigmaAbs, color = cmap(float(idx) / float(len(speciesList))), linewidth = 2, label = speciesList[idx])
 
 
 if plotRayleighScatt:

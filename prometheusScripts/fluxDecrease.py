@@ -267,7 +267,7 @@ def calculateOpticalDepth(phi, rho, orbphase, xArray, wavelengthArray, fundament
 
         specificScenarioDict = scenarioDict[key_scenario]
 
-        n = gasprop.getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict)     
+        n = gasprop.getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict)     
 
         sigma_abs = gasprop.getAbsorptionCrossSection(phi, rho, orbphase, xArray, wavelengthArray, key_scenario, fundamentalsDict, specificScenarioDict, architectureDict, speciesDict, sigmaLookupDict)
 

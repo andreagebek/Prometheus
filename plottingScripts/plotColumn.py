@@ -38,10 +38,14 @@ matplotlib.rcParams['image.origin'] = 'lower'
 matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 
 """
-Read in settings file
+Plotting settings - change ad lib
 """
 
 plotStar = True
+
+"""
+Read in settings file
+"""
 
 paramsFilename = sys.argv[1]
 
@@ -58,13 +62,18 @@ fundamentalsDict = param['Fundamentals']
 Calculate the number density of each species by summing it over all scenarios
 """
 
-x, phi, rho, orbphase = flux.constructSpatialGrid(gridsDict, architectureDict)
+x_axis, delta_x = flux.constructAxis(gridsDict, 'x')
+phi_axis = flux.constructAxis(gridsDict, 'phi')[0]
+rho_axis = flux.constructAxis(gridsDict, 'rho')[0]
+orbphase_axis = flux.constructAxis(gridsDict, 'orbphase')
+
+x, phi, rho, orbphase = np.meshgrid(x_axis, phi_axis, rho_axis, orbphase_axis, indexing = 'ij')
 
 n_speciesDict = {}
 
 for key_scenario in scenarioDict.keys():
 
-    n_total = gasprop.getNumberDensity(x, phi, rho, orbphase, key_scenario, scenarioDict[key_scenario], architectureDict, fundamentalsDict)
+    n_total = gasprop.getNumberDensity(phi, rho, orbphase, x, key_scenario, scenarioDict[key_scenario], architectureDict)
 
     for key_species in speciesDict[key_scenario].keys():
 
@@ -81,8 +90,6 @@ for key_scenario in scenarioDict.keys():
 """
 Calculate the line-of-sight column by integrating along the x-axis
 """
-
-delta_x = 2 * gridsDict['x_border'] / float(gridsDict['x_steps'])
 
 N_species = len(n_speciesDict.keys())
 N_speciesDict = {}
@@ -110,10 +117,11 @@ def add_colorbar(im, aspect=20, pad_fraction=0.5, **kwargs): # Add colorbar to a
 R_0 = architectureDict['R_0']
 R_star = architectureDict['R_star']
 
-y, z = geom.getCartesianFromCylinder(0, phi, rho)[1:] # x is not used here
+y, z = geom.getCartesianFromCylinder(phi, rho) # x is not used here
 
 y = y[0, :, :, 0].flatten() # Create a 1D-array with all the different y-coordinates of the 2D-grid (ignore x-coordinate and orbital phase)
 z = z[0, :, :, 0].flatten() # Same for z-coordinate
+
 
 """
 Plot single figure if there is no time dependency,
@@ -124,11 +132,11 @@ if gridsDict['orbphase_steps'] == 1:
 
     if N_species > 1:
         
-        fig, axes = plt.subplots(figsize=(2 + 10 * N_species, 8), nrows = 1, ncols = N_species)
+        fig, axes = plt.subplots(figsize=(2. + 10. * N_species, 8.), nrows = 1, ncols = N_species)
     
     else:
 
-        fig = plt.figure(figsize = (10, 8))
+        fig = plt.figure(figsize = (10., 8.))
         axes = [fig.add_subplot(111)]
 
     for idx, ax in enumerate(axes):
@@ -137,10 +145,10 @@ if gridsDict['orbphase_steps'] == 1:
 
 
         with np.errstate(divide = 'ignore'):
-            im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = max(5, np.log10(np.min(column))), s = 2, cmap = 'Spectral_r')
+            im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = max(5., np.log10(np.min(column))), s = 2., cmap = 'Spectral_r')
         
         if plotStar:
-            starCircle = plt.Circle((0, 0), R_star / R_0, color = 'black', fill = False, linewidth = 1)
+            starCircle = plt.Circle((0., 0.), R_star / R_0, color = 'black', fill = False, linewidth = 1.)
             ax.add_patch(starCircle)
 
         cbar = add_colorbar(im, ax = ax)
@@ -183,7 +191,7 @@ else:
             with np.errstate(divide = 'ignore'):
                 im = ax.scatter(y / R_0, z / R_0, c = np.log10(column), vmin = max(5, np.log10(min_column)), vmax = np.log10(max_column), s = 2, cmap = 'Spectral_r', animated = True)
 
-            if idx2 == 0: # Else the colorbar is added to every single frame and the program takes FOREVER to execute
+            if idx2 == 0: # Otherwise the colorbar is added to every single frame and the program takes FOREVER to execute
                 cbar = add_colorbar(im, ax = ax)
                 cbar.set_label(r'$\log_{10}(N_\mathrm{los})\,[$' + speciesList[idx1] + r'$\,\mathrm{cm}^{-2}]$')
                 cbar.ax.minorticks_on()
@@ -191,7 +199,7 @@ else:
                 if plotStar:
                     starCircle = plt.Circle((0, 0), R_star / R_0, color = 'black', fill = False, linewidth = 1)
                     ax.add_patch(starCircle)
-            
+          
             ax.set_xlabel(r'$y\,[R_0]$')
             ax.set_ylabel(r'$z\,[R_0]$')
 

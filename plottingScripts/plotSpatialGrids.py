@@ -31,7 +31,7 @@ matplotlib.rcParams['image.origin'] = 'lower'
 matplotlib.rcParams.update({'font.size': 26, 'font.weight': 'bold'})
 
 """
-Read in settings file
+Plotting settings - change ad lib
 """
 
 plotStar = True
@@ -40,7 +40,12 @@ plotRhoArrow = True
 plotPhi = True
 plotXArrow = True
 writeRadii = True
-plotXwobble = True
+
+
+"""
+Read in settings file
+"""
+
 
 paramsFilename = sys.argv[1]
 
@@ -61,11 +66,10 @@ rho_steps = gridsDict['rho_steps']
 orbphase_border = gridsDict['orbphase_border']
 orbphase_steps = gridsDict['orbphase_steps']
 
-x_axis = flux.constructAxis(gridsDict, architectureDict, 'x')
-rho_axis = flux.constructAxis(gridsDict, architectureDict, 'rho')
-phi_axis = flux.constructAxis(gridsDict, architectureDict, 'phi')
-orbphase_axis = flux.constructAxis(gridsDict, architectureDict, 'orbphase') # In radians
-
+x_axis = flux.constructAxis(gridsDict, 'x')[0]
+rho_axis = flux.constructAxis(gridsDict, 'rho')[0]
+phi_axis = flux.constructAxis(gridsDict, 'phi')[0]
+orbphase_axis = flux.constructAxis(gridsDict, 'orbphase') # In radians
 
 
 fig, axes = plt.subplots(figsize=(18, 8), nrows = 1, ncols = 2)
@@ -76,7 +80,7 @@ Plot birds-eye view
 
 x, y = np.meshgrid(x_axis, np.concatenate((-rho_axis, rho_axis)), indexing = 'ij')
 
-rectangle = matplotlib.patches.Rectangle(((a_p - x_border) / R_0, -R_star / R_0), 2 * x_border / R_0, 2 * R_star / R_0, linewidth = 1, edgecolor = 'lightblue', facecolor = 'None')
+rectangle = matplotlib.patches.Rectangle(((a_p - x_border) / R_0, -R_star / R_0), 2 * x_border / R_0, 2 * R_star / R_0, linewidth = 1, edgecolor = 'blue', facecolor = 'None')
 axes[0].add_patch(rectangle)
 
 if plotStar:
@@ -99,9 +103,6 @@ if plotXArrow:
 if writeRadii:
     axes[0].annotate(r'$R_{\ast}$', xy = (-2.5 * R_star / R_0, R_star / R_0))
     axes[0].annotate(r'$a_p$', xy = (-0.82 * a_p / R_0, -0.82 * a_p / R_0))   
-
-if plotXwobble:
-    axes[0].arrow((a_p - x_border)/ R_0, 0, -0.15 * a_p / R_0, 0, length_includes_head = True, head_width = 2.5, width = 1, linewidth = 1, facecolor = 'lightblue')
 
 orbitCircle = plt.Circle((0, 0), a_p / R_0, fill = False, linewidth = 2, alpha = 0.5)
 axes[0].add_patch(orbitCircle)

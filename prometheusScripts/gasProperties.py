@@ -25,7 +25,7 @@ startTime = datetime.datetime.now()
 Number density functions
 """
 
-def getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict, fundamentalsDict):
+def getNumberDensity(phi, rho, orbphase, xArray, key_scenario, specificScenarioDict, architectureDict):
 
     if key_scenario == 'barometric':
 
