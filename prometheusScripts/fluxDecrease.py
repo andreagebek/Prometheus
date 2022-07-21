@@ -296,9 +296,9 @@ def evaluateChord(point, args): # Function to be multiprocessed
 
     if outputDict['recordTau']:
 
-        return np.float32(singleChord), np.float32(tau)
+        return singleChord, tau
 
-    return np.float32(singleChord), None
+    return singleChord, None
 
 def prepareArguments(fundamentalsDict, architectureDict, scenarioDict, speciesDict, gridsDict, outputDict, startTime, verbose):
 
