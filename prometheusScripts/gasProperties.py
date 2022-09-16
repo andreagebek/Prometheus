@@ -12,12 +12,11 @@ from scipy.special import erf, voigt_profile
 from scipy.interpolate import interp1d, RegularGridInterpolator
 import os
 import h5py
-SCRIPTPATH = os.path.realpath(__file__)
-GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
-sys.path.append(GITPATH)
 import prometheusScripts.constants as const
 import prometheusScripts.geometryHandler as geom
 import datetime
+
+GITPATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 startTime = datetime.datetime.now()
 

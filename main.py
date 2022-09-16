@@ -11,11 +11,8 @@ from datetime import datetime
 import os
 import multiprocessing as mp
 from functools import partial
-SCRIPTPATH = os.path.realpath(__file__)
-GITPATH = os.path.dirname(SCRIPTPATH)
-PARENTPATH = os.path.dirname(GITPATH)
-sys.path.append(GITPATH)
-import prometheusScripts.constants as const
+
+PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 if __name__ == '__main__':
 
@@ -42,7 +39,7 @@ if __name__ == '__main__':
         if sys.argv[2] == 'silent':
             verbose = False
 
-    with open(PARENTPATH + '/setupFiles/' + paramsFilename + '.txt') as file:
+    with open(PATH + '/setupFiles/' + paramsFilename + '.txt') as file:
         param = json.load(file)
 
     fundamentalsDict = param['Fundamentals']
@@ -90,14 +87,14 @@ if __name__ == '__main__':
 
     header = 'Wavelength grid (Å), Orbital phase grid [rad], R'
 
-    np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_lightcurve.txt', np.array([wavelength, orbphase, R]).T, header = header)
+    np.savetxt(PATH + '/output/' + paramsFilename + '_lightcurve.txt', np.array([wavelength, orbphase, R]).T, header = header)
 
     
     if outputDict['recordTau']:
 
         phi, rho, tauDisk = flux.getTau(RESULTS_TAU, architectureDict, gridsDict, index_max)
 
-        np.savetxt(PARENTPATH + '/output/' + paramsFilename + '_tau.txt', np.array([phi, rho, tauDisk]).T, header = 'phi grid [rad], rho grid [cm], tau')  
+        np.savetxt(PATH + '/output/' + paramsFilename + '_tau.txt', np.array([phi, rho, tauDisk]).T, header = 'phi grid [rad], rho grid [cm], tau')  
     
     elapsedTime = datetime.now() - startTime
 

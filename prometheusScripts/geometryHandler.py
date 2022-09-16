@@ -5,11 +5,6 @@ Created on 18. October 2021 by Andrea Gebek.
 """
 
 import numpy as np
-import sys
-import os
-SCRIPTPATH = os.path.realpath(__file__)
-GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
-sys.path.append(GITPATH)
 import prometheusScripts.constants as const
 
 def getPlanetPosition(architectureDict, orbphase): # Circular orbit

@@ -6,13 +6,7 @@ Created on 15. July 2021 by Andrea Gebek.
 
 import numpy as np
 from scipy.interpolate import interp1d
-import sys
-import os
 from datetime import datetime
-SCRIPTPATH = os.path.realpath(__file__)
-GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
-sys.path.append(GITPATH) 
-import prometheusScripts.constants as const
 import prometheusScripts.geometryHandler as geom
 import prometheusScripts.gasProperties as gasprop
 import prometheusScripts.stellarSpectrum as stellar

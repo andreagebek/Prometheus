@@ -9,10 +9,8 @@ import numpy as np
 import json
 import sys
 import os
-SCRIPTPATH = os.path.realpath(__file__)
-GITPATH = os.path.dirname(os.path.dirname(SCRIPTPATH))
-PARENTPATH = os.path.dirname(GITPATH)
-sys.path.append(GITPATH)
+
+PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))) 
 
 import prometheusScripts.constants as const
 
@@ -434,5 +432,5 @@ print(r"""
 parameters = {'Fundamentals': fundamentalsDict, 'Architecture': architectureDict, 'Scenarios': scenarioDict, 'Species': speciesDict, 'Grids': gridsDict, 'Output': outputDict}
 
 
-with open(PARENTPATH +'/setupFiles/' + paramsFilename + '.txt', 'w') as outfile:
+with open(PATH +'/setupFiles/' + paramsFilename + '.txt', 'w') as outfile:
     json.dump(parameters, outfile)

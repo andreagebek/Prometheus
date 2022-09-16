@@ -7,11 +7,9 @@ https://github.com/Hoeijmakers/StarRotator/blob/master/lib/stellar_spectrum.py)
 """
 
 import numpy as np
-import requests
 import shutil
 import urllib.request as request
 from contextlib import closing
-import sys
 import astropy.io.fits as fits
 import os
 
