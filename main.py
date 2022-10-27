@@ -73,7 +73,7 @@ if __name__ == '__main__':
     """
 
     orbphase_axis = flux.constructAxis(gridsDict, architectureDict, 'orbphase')
-    wavelength_axis = flux.constructAxis(gridsDict, architectureDict, 'wavelength') * 1e8 # Conversion from cm to Angstrom
+    wavelength_axis = flux.constructWavelengthGrid(gridsDict, scenarioDict, speciesDict) * 1e8 # Conversion from cm to Angstrom
 
     wavelength, orbphase = np.meshgrid(wavelength_axis, orbphase_axis, indexing = 'ij')
     wavelength = wavelength.flatten()

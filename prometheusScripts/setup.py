@@ -193,7 +193,7 @@ of absorbing atoms at the base of the wind?', ['pressure', 'number']) == 'pressu
 
     elif scenario_name == 'AmitisPlasma':
 
-        params['AmitisFilename'] = read_str('Enter the name of the AMITIS output file (located in "amitis_outputs" folder, without the .5h ending:')
+        params['AmitisFilename'] = read_str('Enter the name of the AMITIS output file (located in "amitis_outputs" folder, without the .h5 ending:')
         fundamentalsDict['AmitisSource'] = True
 
     if 'T' in params.keys():
@@ -415,7 +415,9 @@ gridsDict = {}
 
 gridsDict['lower_w'] = read_value('Enter the lower wavelength border in Angstrom:', 500, 55000, 1e-8, roundBorders = False)
 gridsDict['upper_w'] = read_value('Enter the upper wavelength border in Angstrom:', gridsDict['lower_w'] * 1e8, 55000, 1e-8, roundBorders = False)
-gridsDict['resolution'] = read_value('Enter the resolution of the wavelength grid in Angstrom:', 1e-6, (gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 2., 1e-8, roundBorders = False)
+gridsDict['widthHighRes'] = read_value('Enter the width of the high-resolution regions around each absorption line in Angstrom:', 0., (gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8, 1e-8, roundBorders = False)
+gridsDict['resolutionHigh'] = read_value('Enter the resolution of the wavelength grid (for the highly resolved absorption lines) in Angstrom:', 1e-6, (gridsDict['widthHighRes']) * 1e8 / 2., 1e-8, roundBorders = False)
+gridsDict['resolutionLow'] = read_value('Enter the resolution of the wavelength grid (for the coarsely resolved continuum) in Angstrom:', 1e-3, (gridsDict['upper_w'] - gridsDict['lower_w']) * 1e8 / 2., 1e-8, roundBorders = False)
 
 gridsDict['x_midpoint'] = read_value('Enter the midpoint of the grid in x-direction in planetary orbital radii (default: 1):', architectureDict['R_star'] / architectureDict['a_p'], 10.,
 architectureDict['a_p'], roundBorders = False)
