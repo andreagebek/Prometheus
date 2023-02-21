@@ -16,30 +16,69 @@ R_J = 6.99e9        #Jupiter radius
 M_J = 1.898e30      #Jupiter mass
 M_E = 5.974e27      #Earth mass
 R_sun = 6.96e10     # Solar radius
-M_sun = 1.988e33
+M_sun = 1.988e33    # Solar mass
 R_Io = 1.822e8      # Io radius
 euler_mascheroni = 0.57721 
 AU = 1.496e13   # Conversion of one astronomical unit into cm
 
 """
-Masses for the absorbing atoms/ions (this is not a really elegant way,
-but I couldn't find another solution yet)
+Generally useful functions
 """
 
-speciesInfoDict = {'NaI': ['Na', '1', 22.99 * amu], 'KI': ['K', '1', 39.0983 * amu], 'SiI': ['Si', '1', 28.0855 * amu], 'SiII': ['Si', '2', 28.0855 * amu],
-'SiIII': ['Si', '3', 28.0855 * amu], 'SiIV': ['Si', '4', 28.0855 * amu], 'MgI': ['Mg', '1', 24.305 * amu], 'MgII': ['Mg', '2', 24.305 * amu]}
+def calculateDopplerShift(v):
+    
+    beta = v / c
+    shift = np.sqrt((1. - beta) / (1. + beta))
+
+    return shift
+
 
 """
-Planetary parameters
-Format: [Stellar radius (cm), Stellar mass (g), Reference radius (cm), Planetary mass(g), Orbital distance (cm),
-Stellar effective temperature (K), Stellar surface gravity (log10(cm/s^2)), Metallicity [Fe/H], Alpha-enhancement [alpha/Fe]]
-WASP-49b: Wyttenbach et al. 2017 (Metallicity from Sousa+ 2018, Alpha-enhancement unknown)
-HD189733b: Wyttenbach et al. 2015 (T_eff, log_g, and Metallicity from Chavero+ 2019, Alpha-enhancement unknown)
-55Cancri-e: Crida et al. 2018 (a_p, T_eff, log_g, and Metallcity from Bourrier+ 2018, Alpha-enhancement unknown) 
+Available atoms/ions with their atomic masses
 """
 
-planetsDict = {'WASP-49b': [1.038 * R_sun, 1.003 * M_sun, 1.198 * R_J, 0.399 * M_J, 0.03873 * AU, 5600, 4.5, -0.08, 0],
-'HD189733b': [0.756 * R_sun, 0.823 * M_sun, 1.138 * R_J, 1.138 * M_J, 0.0312 * AU, 5201, 4.64, -0.02, 0],
-'55Cancri-e': [0.98 * R_sun, 1.015 * M_sun, 0.1737 * R_J, 0.02703 * M_J, 0.01544 * AU, 5172, 4.43, 0.35, 0]}
+class Species:
+    def __init__(self, name, element, ionizationState, mass):
+        self.name = name
+        self.element = element
+        self.ionizationState = ionizationState
+        self.mass = mass
+
+class SpeciesCollection:
+    def __init__(self, speciesList = None):
+        if speciesList is None:
+            self.speciesList = []
+        else:
+            self.speciesList = speciesList
+
+    def findSpecies(self, nameSpecies):
+
+        for species in self.speciesList:
+            if species.name == nameSpecies:
+                return species
+
+        print('Species', nameSpecies, 'was not found.')
+        return None
+
+    def listSpeciesNames(self):
+        names = []
+        for species in self.speciesList:
+            names.append(species.name)
+        return names
+
+    def addSpecies(self, species):
+        self.speciesList.append(species)
 
 
+class AvailableSpecies(SpeciesCollection):
+    def __init__(self):
+        NaI = Species('NaI', 'Na', '1', 22.99 * amu)
+        KI = Species('KI', 'K', '1', 39.0983 * amu)
+        SiI = Species('SiI', 'Si', '1', 28.0855 * amu)
+        SiII = Species('SiII', 'Si', '2', 28.0855 * amu)
+        SiIII = Species('SiIII', 'Si', '3', 28.0855 * amu)
+        SiIV = Species('SiIV', 'Si', '4', 28.0855 * amu)
+        MgI = Species('MgI', 'Mg', '1', 24.305 * amu)
+        MgII = Species('MgII', 'Mg', '2', 24.305 * amu)
+
+        self.speciesList = [NaI, KI, SiI, SiII, SiIII, SiIV, MgI, MgII]

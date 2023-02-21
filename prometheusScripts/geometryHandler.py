@@ -5,110 +5,78 @@ Created on 18. October 2021 by Andrea Gebek.
 """
 
 import numpy as np
-import prometheusScripts.constants as const
 
-def getPlanetPosition(architectureDict, orbphase): # Circular orbit
+class Grid:
+    def __init__(self, x_midpoint, x_border, x_steps, rho_border, rho_steps, phi_steps, orbphase_border, orbphase_steps):
+        self.x_midpoint = x_midpoint
+        self.x_border = x_border
+        self.x_steps = x_steps
+        self.rho_border = rho_border
+        self.rho_steps = rho_steps
+        self.phi_steps = phi_steps
+        self.orbphase_border = orbphase_border
+        self.orbphase_steps = orbphase_steps
 
-    x_p = architectureDict['a_p'] * np.cos(orbphase)
-    y_p = architectureDict['a_p'] * np.sin(orbphase)
+    def getCartesianFromCylinder(phi, rho):
 
-    return x_p, y_p
+        y = rho * np.sin(phi)
+        z = rho * np.cos(phi)
 
-def getOrbphaseMoon(architectureDict, orbphase):
+        return y, z
 
-    orbphase_moon = architectureDict['starting_orbphase_moon'] + orbphase * np.sqrt((architectureDict['a_p']**3 * architectureDict['M_p']) / (architectureDict['a_moon']**3 * architectureDict['M_star']))
+    def getDeltaX(self):
+        return 2. * self.x_border / float(self.x_steps)
 
-    return orbphase_moon
+    def getDeltaRho(self):
+        return self.rho_border / float(self.rho_steps)
 
-def getMoonPosition(architectureDict, orbphase):
+    def getDeltaPhi(self):
+        return 2. * np.pi / float(self.phi_steps)
 
-    orbphase_moon = getOrbphaseMoon(architectureDict, orbphase)
+    def constructXaxis(self, midpoints = True):
 
-    x_p, y_p = getPlanetPosition(architectureDict, orbphase)
+        if midpoints: # Gas cell midpoints
+            x_axis = np.linspace(self.x_midpoint - self.x_border, self.x_midpoint + self.x_border, int(self.x_steps), endpoint = False) + self.x_border / float(self.x_steps)
 
-    x_moon = x_p + architectureDict['a_moon'] * np.cos(orbphase_moon)
-    y_moon = y_p + architectureDict['a_moon'] * np.sin(orbphase_moon)
+        else: # Return an array with x_steps + 1 entries, marking the cell edges
+            x_axis = np.linspace(self.x_midpoint - self.x_border, self.x_midpoint + self.x_border, int(self.x_steps) + 1)
 
-    return x_moon, y_moon
+        return x_axis
 
+    def constructRhoAxis(self, midpoints = True):
 
-def getBodyLOSvelocity(architectureDict, orbphase, key_scenario):
+        if midpoints:
+            rho_axis = np.linspace(0., self.rho_border, int(self.rho_steps), endpoint = False) + 0.5 * self.rho_border / float(self.rho_steps)
+        
+        else:
+            rho_axis = np.linspace(0., self.rho_border, int(self.rho_steps) + 1)
+            
+        return rho_axis
 
-    v_los = -np.sin(orbphase) * np.sqrt(const.G * architectureDict['M_star'] / architectureDict['a_p'])
+    def constructPhiAxis(self, midpoints = True):
 
-    if key_scenario == 'exomoon':
+        if midpoints:
+            phi_axis = np.linspace(0, 2 * np.pi, int(self.phi_steps), endpoint = False) + np.pi / float(self.phi_steps)
+        
+        else:
+            phi_axis = np.linspace(0, 2 * np.pi, int(self.phi_steps) + 1)
 
-        orbphase_moon = getOrbphaseMoon(architectureDict, orbphase)
-        v_los += - np.sin(orbphase_moon) * np.sqrt(const.G * architectureDict['M_p'] / architectureDict['a_moon'])
+        return phi_axis
 
-    return v_los
+    def constructOrbphaseAxis(self):
 
-def getPlanetRotationLOSvelocity(architectureDict, phi, rho, orbphase, key_scenario):
+        orbphase_axis = np.linspace(-self.orbphase_border, self.orbphase_border, int(self.orbphase_steps))
 
-    if key_scenario == 'barometric' or key_scenario == 'hydrostatic' or key_scenario == 'escaping':
+        return orbphase_axis
 
-        period_planetrot = architectureDict['period_planetrot']
+    def getChordGrid(self):
 
-        y_p = getPlanetPosition(architectureDict, orbphase)[1]
+        phi_axis = self.constructPhiAxis()
+        rho_axis = self.constructRhoAxis()
+        orbphase_axis = self.constructOrbphaseAxis()
 
-        v_los = 2 * np.pi / period_planetrot * (rho * np.sin(phi) - y_p)
+        phiGrid, rhoGrid, orbphaseGrid = np.meshgrid(phi_axis, rho_axis, orbphase_axis, indexing = 'ij')
 
-    else:
+        chordGrid = np.stack((phiGrid.flatten(), rhoGrid.flatten(), orbphaseGrid.flatten()), axis = -1)
 
-        v_los = 0.
-    
-    return v_los
-
-def getCartesianFromCylinder(phi, rho):
-
-    y = rho * np.sin(phi)
-    z = rho * np.cos(phi)
-
-    return y, z
-
-
-def getDistanceFromPlanet(architectureDict, phi, rho, orbphase, xArray):
-
-    y, z = getCartesianFromCylinder(phi, rho)
-    
-    x_p, y_p = getPlanetPosition(architectureDict, orbphase)
-
-    r_fromPlanet = np.sqrt((xArray - x_p)**2 + (y - y_p)**2 + z**2)
-
-    return r_fromPlanet
-
-def getTorusCoords(architectureDict, phi, rho, orbphase, xArray):
-
-    y, z = getCartesianFromCylinder(phi, rho)
-    
-    x_p, y_p = getPlanetPosition(architectureDict, orbphase)
-
-    a = np.sqrt((xArray - x_p)**2 + (y - y_p)**2)
-
-    return a, z
-
-
-def getDistanceFromMoon(architectureDict, phi, rho, orbphase, xArray):
-
-    y, z = getCartesianFromCylinder(phi, rho)
-
-    x_moon, y_moon = getMoonPosition(architectureDict, orbphase)
-    
-    r_fromMoon = np.sqrt((xArray - x_moon)**2 + (y - y_moon)**2 + z**2)
-
-    return r_fromMoon
-
-
-def calculateStellarLOSvelocity(architectureDict, phi, rho):
-    
-    i_starrot = architectureDict['inclination_starrot']
-    phi_starrot = architectureDict['azimuth_starrot']
-    T_starrot = architectureDict['period_starrot']
-    R_star = architectureDict['R_star']
-
-    dir_omega = np.array([-np.sin(i_starrot) * np.cos(phi_starrot), -np.sin(i_starrot) * np.sin(phi_starrot), np.cos(i_starrot)])
-    omega = 2. * np.pi / T_starrot * dir_omega # Angular velocity vector of the stellar rotation
-    r_surface = np.array([np.sqrt(R_star**2 - rho**2), np.sin(phi) * rho, np.cos(phi) * rho]) # Vector to the surface of the star
-    v_los = np.cross(omega, r_surface)[0] # The line-of-sight velocity is the one along the x-axis
-
-    return v_los
+        return chordGrid

@@ -213,10 +213,7 @@ Architecture
 
 print('\nProvide parameters related to the architecture of the system.\n')
 
-PossibleSystems = ['0']
-
-for key in const.planetsDict.keys():
-    PossibleSystems.append(key)
+PossibleSystems = ['0'] + const.AvailableSystems().listSystems()
 
 
 architectureDict = {}

@@ -5,15 +5,15 @@ in the calculation.
 Created on 16. September 2022 by Andrea Gebek.
 """
 
-#import prometheusScripts.constants as const
-import constants as const
-import geometryHandler as geom
+import prometheusScripts.constants as const
+import prometheusScripts.geometryHandler as geom
 import numpy as np
 import shutil
 import urllib.request as request
 from contextlib import closing
 import astropy.io.fits as fits
 import os
+from scipy.interpolate import interp1d
 
 
 
@@ -25,11 +25,23 @@ class Star:
         self.log_g = log_g
         self.Z = Z
         self.alpha = alpha
+        self.CLV_u1 = 0.
+        self.CLV_u2 = 0.
+        self.vsiniStarrot = 0.
+        self.phiStarrot = 0.
 
-    def getSurfaceVelocity(self, vsiniStarrot, phiStarrot, phi, rho): # vsiniStarrot is the maximum velocity of the stellar rotation at the edge of the stellar disk, 
+    def addCLVparameters(self, CLV_u1, CLV_u2):
+        self.CLV_u1 = CLV_u1
+        self.CLV_u2 = CLV_u2
+    
+    def addRMparameters(self, vsiniStarrot, phiStarrot):
+        self.vsiniStarrot = vsiniStarrot
+        self.phiStarrot = phiStarrot
+
+    def getSurfaceVelocity(self, phi, rho): # vsiniStarrot is the maximum velocity of the stellar rotation at the edge of the stellar disk, 
         # phiStarrot is the angle at which the maximum velocity is obtained (measured in the same coordinate system as phi)
 
-        v_los = vsiniStarrot * rho / self.R * np.cos(phi - phiStarrot)
+        v_los = self.vsiniStarrot * rho / self.R * np.cos(phi - self.phiStarrot)
 
         return v_los
 
@@ -73,7 +85,7 @@ class Star:
         Z_grid = np.concatenate((np.arange(-4,-1,1),np.arange(-1.5,1.5,0.5)))
         alpha_grid = np.arange(0,1.6,0.2)-0.2
         
-        T_a = Star.round_to_grid(T_grid, self.T)
+        T_a = Star.round_to_grid(T_grid, self.T_eff)
         log_g_a = Star.round_to_grid(log_g_grid, self.log_g)
         Z_a = Star.round_to_grid(Z_grid, self.Z)
         alpha_a = Star.round_to_grid(alpha_grid, self.alpha)
@@ -129,6 +141,97 @@ class Star:
 
         return (w * 1e-8, F / np.pi) # Conversion to cgs-units. Note that Jens divides F by
         # a seemingly random factor of pi, but this should not bother the transit calculations here. 
+
+    def calculateCLV(self, rho):
+        # Quadratic limb darkening law
+
+        arg = 1. - np.sqrt(1. - rho**2 / self.R**2)
+
+        return 1. - self.CLV_u1 * arg - self.CLV_u2 * arg**2
+
+    def calculateRM(self, phi, rho, wavelength):
+
+        v_los = self.getSurfaceVelocity(phi, rho)
+        shift = const.calculateDopplerShift(v_los)
+
+        F_shifted = 10.**self.Fstar_function(wavelength / shift) # This contains the shifted flux incident on the exoplanet, instead of shifting the spectra
+        # at all positions on the stellar surface just read in the spectrum at different wavelengths depending on the position in the spatial grid (phi and rho)
+
+        return F_shifted
+
+    def addFstarFunction(self, wavelength):
+
+        PHOENIX_output = self.getSpectrum()
+    
+        w_star = PHOENIX_output[0]
+        w_max = np.max(wavelength) * const.calculateDopplerShift(-self.vsiniStarrot)
+        w_min = np.min(wavelength) * const.calculateDopplerShift(self.vsiniStarrot)
+
+        SEL = (w_star >= w_min) * (w_star <= w_max)
+        minArg = max(min(np.argwhere(SEL)).item() - 1, 0)
+        maxArg = max(np.argwhere(SEL)).item() + 2 # Add one value at the beginning and end of wavelength array for safety
+
+        w_starSEL = w_star[minArg:maxArg]
+        F_0 = PHOENIX_output[1][minArg:maxArg]
+
+        Fstar_function = interp1d(w_starSEL, np.log10(F_0), kind = 'linear')
+
+        self.Fstar_function = Fstar_function
+
+
+    def getFstarIntegrated(self, wavelength, grid):
+        # Return F_star(wavelength, phi, rho) integrated over the stellar disk and over the upper part of the stellar disk (if rho_border is not the stellar radius)
+        if self.vsiniStarrot == 0.: # No RM-effect
+
+            FstarIntegrated = np.pi * self.R**2 * (1. - self.CLV_u1 / 3. - self.CLV_u2 / 6.) * np.ones_like(wavelength)
+
+            upperTerm = 0.5 * (-self.CLV_u2 * self.R**2 - self.CLV_u1 * self.R**2 + self.R**2)
+            term1 = -4. * self.R**2 * self.CLV_u1 * (1. - grid.rho_border**2 / self.R**2)**1.5
+            term2 = self.R**2 * self.CLV_u2 * (6 * grid.rho_border**2 / self.R**2 + 8. * (1. - grid.rho_border**2 / self.R**2)**1.5 - 3. * (self.R**2 - grid.rho_border**2)**2 / self.R**4)
+            lowerTerm = 1. / 12. * (term1 - term2 - 6. * self.CLV_u1 * grid.rho_border**2 + 6. * grid.rho_border**2)
+
+            FstarUpper = 2. * np.pi * (upperTerm - lowerTerm) * np.ones_like(wavelength)
+        
+
+        else: # With RM-effect
+
+            phiArray = grid.constructPhiAxis()
+            delta_phi = grid.getDeltaPhi()
+            rhoArray = grid.constructRhoAxis()
+            delta_rho = grid.getDeltaRho()
+
+            FstarIntegrated = np.zeros_like(wavelength)
+
+            for phi in phiArray:
+                for rho in rhoArray:
+            
+                    Fstar = self.calculateRM(phi, rho, wavelength)
+
+                    Fstar *= self.calculateCLV(rho)
+                    
+                    FstarIntegrated += Fstar * delta_phi * delta_rho * rho
+
+                    FstarUpper = np.zeros_like(wavelength) # To calculate this with the RM-effect we would need the spatial grid to run over the entire stellar disk
+
+        return FstarIntegrated, FstarUpper
+
+    def getFstar(self, phi, rho, wavelength):
+
+        # Calculate F_star(wavelength, phi, rho)
+
+        if self.vsiniStarrot == 0.: # No RM-effect
+            Fstar = np.ones_like(wavelength) * self.calculateCLV(rho)
+
+        else: # RM_effect = True
+
+            Fstar = self.calculateRM(phi, rho, wavelength)
+
+            Fstar *= self.calculateCLV(rho)
+
+        return Fstar
+
+
+
 
 class Planet:
     def __init__(self, name, R, M, a, hostStar): #  Reference radius (cm), Planetary mass(g), Orbital distance (cm)
