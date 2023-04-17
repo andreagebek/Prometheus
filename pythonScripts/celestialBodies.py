@@ -5,8 +5,8 @@ in the calculation.
 Created on 16. September 2022 by Andrea Gebek.
 """
 
-import prometheusScripts.constants as const
-import prometheusScripts.geometryHandler as geom
+import pythonScripts.constants as const
+import pythonScripts.geometryHandler as geom
 import numpy as np
 import shutil
 import urllib.request as request
@@ -39,7 +39,7 @@ class Star:
         self.phiStarrot = phiStarrot
 
     def getSurfaceVelocity(self, phi, rho): # vsiniStarrot is the maximum velocity of the stellar rotation at the edge of the stellar disk, 
-        # phiStarrot is the angle at which the maximum velocity is obtained (measured in the same coordinate system as phi)
+        # phiStarrot is the angle at which the maximum velocity (towards the observer) is obtained (measured in the same coordinate system as phi)
 
         v_los = self.vsiniStarrot * rho / self.R * np.cos(phi - self.phiStarrot)
 

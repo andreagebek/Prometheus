@@ -11,8 +11,8 @@ from scipy.special import erf, voigt_profile
 import os
 import h5py
 from scipy.interpolate import interp1d
-import prometheusScripts.constants as const
-import prometheusScripts.geometryHandler as geom
+import pythonScripts.constants as const
+import pythonScripts.geometryHandler as geom
 from scipy.interpolate import RegularGridInterpolator
 from copy import deepcopy
 from scipy.ndimage import gaussian_filter as gauss
@@ -189,7 +189,7 @@ class SerpensExosphere(EvaporativeExosphere):
 
     def addInterpolatedDensity(self, spatialGrid):
         serpensOutput = np.loadtxt(self.filename) * 1e2 # In SI-units initially. First three columns describe the positions
-        particlePos = serpensOutput[2:, 0:3] - serpensOutput[1, 0:3] + np.array([spatialGrid.x_midpoint, 0., 0.]) # Center on the planet position and shift the coordinates along the x-axis due to the star-planet separation
+        particlePos = serpensOutput[:, 0:3] # Serpens output is centered on the star, as is the prometheus calculation
 
         xBins = spatialGrid.constructXaxis(midpoints = False)
         yBins = np.linspace(-spatialGrid.rho_border, spatialGrid.rho_border, 2 * int(spatialGrid.rho_steps) + 1)
