@@ -77,17 +77,17 @@ if __name__ == '__main__':
 
         elif key_scenario == 'exomoon':
             moon = bodies.Moon(architectureDict['starting_orbphase_moon'], architectureDict['R_moon'], architectureDict['a_moon'], planet)
-            key_species = speciesDict['exomoon'].keys()[0] # Only one absorber
+            key_species = list(speciesDict['exomoon'].keys())[0] # Only one absorber
             Nparticles = speciesDict['exomoon'][key_species]['Nparticles']
-            scenarioList.append(gasprop.MoonExosphere(Nparticles, scenarioDict['q_moon'], moon))
+            scenarioList.append(gasprop.MoonExosphere(Nparticles, scenarioDict['exomoon']['q_moon'], moon))
         
         elif key_scenario == 'torus':
-            key_species = speciesDict['torus'].keys()[0] # Only one absorber
+            key_species = list(speciesDict['torus'].keys())[0] # Only one absorber
             Nparticles = speciesDict['torus'][key_species]['Nparticles']
             scenarioList.append(gasprop.TorusExosphere(Nparticles, scenarioDict['torus']['a_torus'], scenarioDict['torus']['v_ej'], planet))
         
         elif key_scenario == 'serpens':
-            key_species = speciesDict['serpens'].keys()[0] # Only one absorber
+            key_species = list(speciesDict['serpens'].keys())[0] # Only one absorber
             Nparticles = speciesDict['serpens'][key_species]['Nparticles']
             scenario = gasprop.SerpensExosphere(scenarioDict['serpens']['serpensPath'], planet, 0.)
             scenario.addInterpolatedDensity(spatialGrid)

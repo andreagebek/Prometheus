@@ -287,9 +287,6 @@ def setupArchitecture(fundamentalsDict):
 Specify the absorption species.
 """        
 
-
-QabsorberType = TextQuestion('Do you want to add an atomic/ionic or a molecular absorber (the atom option includes ions)?', False, ['atom', 'molecule'])
-QstopAbsorbers = TextQuestion('Do you want to add another absorber?', True)
 Qmolecule = TextQuestion('Enter the name of the molecular absorber:')
 Qsigmav = NumericalQuestion('Enter the pseudo-thermal velocity dispersion (sigma_v = sqrt(k_B * T / m)) in km/s:', 1e-3, 1e5, 1e5)
 QMoleculesTemperature = NumericalQuestion('Enter the pseudo-temperature for the molecular absorber in K:', 100., 3400., 1.)
@@ -303,6 +300,7 @@ def setupSpecies(scenarioDict):
 
     for key_scenario in scenarioDict.keys():
 
+        QabsorberType = TextQuestion('Do you want to add an atomic/ionic or a molecular absorber (the atom option includes ions) in the ' + key_scenario + ' scenario?', False, ['atom', 'molecule'])
         PossibleAbsorbers = const.AvailableSpecies().listSpeciesNames()
 
         speciesDict[key_scenario] = {}
@@ -326,6 +324,8 @@ def setupSpecies(scenarioDict):
                 params['chi'] = NumericalQuestion('Enter the mixing ratio of ' + key_species + ' in the ' + key_scenario + ' scenario:', 0., 1., 1., acceptLowerBorder = False).readValue()
                     
                 speciesDict[key_scenario][key_species] = params
+
+                QstopAbsorbers = TextQuestion('Do you want to add another absorber in the ' + key_scenario + ' scenario?', True)
 
                 if not QstopAbsorbers.readStr():
                     break
@@ -354,7 +354,7 @@ def setupSpecies(scenarioDict):
 Grid parameters
 """
 
-QlowerWavelengthBorder = NumericalQuestion('Enter the lower wavelength border in Angstrom:', 500, 55000, 1e-8)
+QlowerWavelengthBorder = NumericalQuestion('Enter the lower wavelength border in Angstrom:', 500, 55000, 1e-8, roundBorders = False)
 QxBins = NumericalQuestion('Enter the number of bins for the spatial discretization along the chord (x-direction):', 2., 1e6, 1.)
 QphiBins = NumericalQuestion('Enter the number of bins for the spatial discretization for the polar coordinate (phi-direction):', 1., 1e4, 1.)
 QrhoBins = NumericalQuestion('Enter the number of bins for the spatial discretization in radial direction (rho-direction):', 2., 1e6, 1.)
