@@ -136,8 +136,20 @@ if __name__ == '__main__':
 
     R = main.sumOverChords()
     wavelength = wavelengthGrid.constructWavelengthGrid(scenarioList)
+    orbphase = spatialGrid.constructOrbphaseAxis()
+
+    """
+    Store the result
+    """
+
+    orbphaseOutput = np.insert(orbphase / (2. * np.pi), 0, np.nan)
+    mainOutput = np.vstack((wavelength, R))
+    output = np.vstack((orbphaseOutput, mainOutput.T))
+
+    header = 'Prometheus output file.\nFirst row: Orbital phases [1]\n\
+All other rows: Wavelength [cm] (first column), Transit depth R(orbital phase, wavelength) [1] (other columns)'
     
-    np.savetxt(PATH + '/output/' + paramsFilename + '.txt', np.array([wavelength * 1e4, R[0, :]]).T)
+    np.savetxt(PATH + '/output/' + paramsFilename + '.txt', output, header = header)
 
     elapsedTime = datetime.now() - startTime
 
