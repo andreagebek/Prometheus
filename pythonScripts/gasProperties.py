@@ -418,6 +418,10 @@ class WavelengthGrid:
         diff = np.concatenate(([np.inf], np.diff(peaks), [np.inf])) # Difference between each absorption line center. Add infinity at beginning and end such that
         # when calculating the high-resolution bands we keep the lines with the lowest/highest wavlengths.
 
+        if len(peaks) == 0: # No absorption lines in the specified wavelength interval
+            print('WARNING: No absorption lines from atoms/ions in the specified wavelength range!')
+            return np.arange(self.lower_w, self.upper_w, self.resolutionLow)
+
         HighResBorders = ([], [])
 
         for idx, peak in enumerate(peaks):

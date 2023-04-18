@@ -89,7 +89,7 @@ if __name__ == '__main__':
         elif key_scenario == 'serpens':
             key_species = list(speciesDict['serpens'].keys())[0] # Only one absorber
             Nparticles = speciesDict['serpens'][key_species]['Nparticles']
-            scenario = gasprop.SerpensExosphere(scenarioDict['serpens']['serpensPath'], planet, 0.)
+            scenario = gasprop.SerpensExosphere(scenarioDict['serpens']['serpensPath'], Nparticles, planet, 0.)
             scenario.addInterpolatedDensity(spatialGrid)
             scenarioList.append(scenario) # sigmaSmoothing hardcoded to 0, i.e. no Gaussian smoothing of the serpens density distribution.
 
