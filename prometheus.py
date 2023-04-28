@@ -117,14 +117,7 @@ if __name__ == '__main__':
                     scenarioList[idx].addMolecularConstituent(key_species, absorberDict['T'])
                     scenarioList[idx].constituents[-1].addLookupFunctionToConstituent()
 
-
-
-    if fundamentalsDict['DopplerOrbitalMotion'] == 'true':
-        DopplerOrbitalMotion = True
-    else:
-        DopplerOrbitalMotion = False
-
-    atmos = gasprop.Atmosphere(scenarioList, DopplerOrbitalMotion)
+    atmos = gasprop.Atmosphere(scenarioList, fundamentalsDict['DopplerOrbitalMotion'])
 
     main = gasprop.Transit(atmos, wavelengthGrid, spatialGrid)
     main.addWavelength()

@@ -379,8 +379,8 @@ class Atmosphere:
             for constituent in densityDistribution.constituents:
 
                 v_los = self.getAbsorberVelocityField(densityDistribution, x, phi, rho, orbphase)
-                beta = v_los / const.c
-                shift = np.sqrt((1. - beta) / (1. + beta))
+                shift = const.calculateDopplerShift(-v_los) # v_los is in the observer's rest frame. If v_los>0, the object is moving
+                # towards the host star, which means that the argument in this function needs to be negative (such that beta<0) and shift > 1.
 
                 wavelengthShifted = np.tensordot(shift, wavelength, axes = 0) # 2D array (N_x, N_lambda)
 
