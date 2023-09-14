@@ -153,6 +153,42 @@ class MoonExosphere(EvaporativeExosphere):
         n = n_0 * (self.moon.R / r)**self.q * np.heaviside(r - self.moon.R, 1.)
 
         return n
+    
+class TidallyHeatedMoon(EvaporativeExosphere):
+    def __init__(self, q, moon):
+        self.q = q
+        self.moon = moon
+        self.hasMoon = True
+        self.planet = moon.hostPlanet
+
+    def addSourceRateFunction(self, filename, tau_photoionization, mass_absorber):
+
+        Mdot = np.loadtxt(filename) # In g/s
+
+        Mdot = np.concatenate((Mdot, Mdot[::-1]))
+
+        phi_moon = np.linspace(0., 2. * np.pi, len(Mdot))
+
+        N_function = interp1d(phi_moon, np.log10(Mdot * tau_photoionization / mass_absorber))
+
+        self.N_function = N_function
+
+    def calculateAbsorberNumber(self, orbphase):
+
+        orbphase_moon = self.moon.getOrbphase(orbphase) % (2. * np.pi)
+        N = 10**self.N_function(orbphase_moon) # Note that log10(N) was fitted, not N
+        return N
+
+    def calculateNumberDensity(self, x, phi, rho, orbphase):
+
+        N = self.calculateAbsorberNumber(orbphase)
+
+        r = self.moon.getDistanceFromMoon(x, phi, rho, orbphase)
+
+        n_0 = (self.q - 3.) / (4. * np.pi * self.moon.R**3) * N
+        n = n_0 * (self.moon.R / r)**self.q * np.heaviside(r - self.moon.R, 1.)
+
+        return n
 
 class TorusExosphere(EvaporativeExosphere):
     def __init__(self, N, a_torus, v_ej, planet):
