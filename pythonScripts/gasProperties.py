@@ -290,9 +290,9 @@ class AtmosphericConstituent:
         SEL_COMPLETE = (line_wavelength != '') * (line_A != '') * (line_f != '') 
         SEL_SPECIES = (lineList[:, 0] == self.species.element) * (lineList[:, 1] == self.species.ionizationState) # Select element and ionization state
 
-        line_wavelength = line_wavelength[SEL_SPECIES * SEL_COMPLETE].astype(np.float) * 1e-8 # In cm
-        line_gamma = line_A[SEL_SPECIES * SEL_COMPLETE].astype(np.float) / (4. * np.pi) # HWHM of Lorentzian, assumed to be A / (4 * pi) (see Draine 2013 p57)
-        line_f = line_f[SEL_SPECIES * SEL_COMPLETE].astype(np.float) # Oscillator strength
+        line_wavelength = line_wavelength[SEL_SPECIES * SEL_COMPLETE].astype(float) * 1e-8 # In cm
+        line_gamma = line_A[SEL_SPECIES * SEL_COMPLETE].astype(float) / (4. * np.pi) # HWHM of Lorentzian, assumed to be A / (4 * pi) (see Draine 2013 p57)
+        line_f = line_f[SEL_SPECIES * SEL_COMPLETE].astype(float) # Oscillator strength
 
         SEL_WAVELENGTH = (line_wavelength > min(wavelength)) * (line_wavelength < max(wavelength))
 
